@@ -1,15 +1,19 @@
 // USPB Core Domain Models matching Go Backend Structs
 
-export type UserRole = "admin" | "officer" | "citizen" | "school_rep";
+export type UserRole =
+  | "ADMIN"
+  | "FEE_OFFICER"
+  | "ENV_OFFICER"
+  | "GARBAGE_SUPERVISOR"
+  | "TEACHER";
 
 export interface User {
-  id: string;
+  id: number;
   name: string;
-  email: string;
+  username: string;
   role: UserRole;
-  phone?: string;
+  school_id?: number | null;
   created_at: string;
-  updated_at: string;
 }
 
 export interface AuthResponse {
