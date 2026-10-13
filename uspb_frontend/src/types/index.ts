@@ -1,0 +1,59 @@
+// USPB Core Domain Models matching Go Backend Structs
+
+export type UserRole = "admin" | "officer" | "citizen" | "school_rep";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export interface GarbageFeeRecord {
+  id: string;
+  tax_payer_name: string;
+  ward_no: string;
+  assessment_no: string;
+  amount: number;
+  status: "paid" | "pending" | "overdue";
+  period: string; // e.g. "2026-Q1"
+  paid_at?: string;
+  created_at: string;
+}
+
+export interface EnvironmentalCert {
+  id: string;
+  business_name: string;
+  registration_no: string;
+  applicant_name: string;
+  category: string;
+  status: "submitted" | "inspected" | "approved" | "rejected";
+  expiry_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SchoolReward {
+  id: string;
+  school_name: string;
+  waste_type: "plastic" | "paper" | "electronic" | "organic";
+  quantity_kg: number;
+  points_earned: number;
+  recorded_by: string;
+  created_at: string;
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+}
