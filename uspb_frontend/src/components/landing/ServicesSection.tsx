@@ -42,7 +42,7 @@ export function ServicesSection() {
               </li>
             </ul>
             <Link
-              href="/garbage-fees"
+              href="/garbage-fees/dashboard"
               className="btn-hover-fx block text-center rounded-[2px] text-[11px] font-semibold bg-[#800000] text-white py-2 hover:bg-[#5a0000] mt-auto shadow-xs hover:shadow"
             >
               Explore Service &rarr;
