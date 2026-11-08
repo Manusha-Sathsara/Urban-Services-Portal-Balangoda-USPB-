@@ -8,7 +8,9 @@
  *  A. Page Header — title, subtitle, year selector, Add New Business button
  *  B. Summary Cards — Total Businesses, Paid, Unpaid, Total Collected
  *  C. Annual Fee Collection Summary — progress bar + summary figures
- *  D. Business Payment Activity Table — compact table of recent records
+ *  D. Search and Filter Section — search by business name, owner name, reg. number;
+ *     filters for Payment Status and Business Type; Reset Filters button
+ *  E. Business Payment Records Table — filtered payment records for the selected year
  *
  * Data: Uses isolated mock data (mockData.ts) — replace with API calls when ready.
  * Theme: Reuses landing page brand colors (#5a0000, #800000, #fbbf24, #f0e0df).
@@ -42,6 +44,7 @@ function formatLKR(amount: number): string {
 function formatDate(iso?: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -50,7 +53,7 @@ function formatDate(iso?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Component: Year Selector
+// File-Level Component: Year Selector
 // ---------------------------------------------------------------------------
 function YearSelector({
   years,
@@ -78,7 +81,7 @@ function YearSelector({
       >
         {years.map((y) => (
           <option key={y} value={y}>
-            {y}
+            FY {y}
           </option>
         ))}
       </select>
@@ -87,15 +90,47 @@ function YearSelector({
 }
 
 // ---------------------------------------------------------------------------
-// Component: Empty State (shown when no records exist)
+// File-Level Component: Empty State
 // ---------------------------------------------------------------------------
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  filtered,
+  selectedYear,
+  onReset,
+}: {
+  filtered: boolean;
+  selectedYear: number;
+  onReset?: () => void;
+}) {
   return (
     <div className="py-12 text-center">
       <div className="w-12 h-12 rounded-full bg-[#f0e0df] text-[#5a0000] text-2xl grid place-items-center mx-auto mb-3">
-        📋
+        {filtered ? "🔍" : "📋"}
       </div>
-      <p className="text-sm text-[#8a5a58]">{message}</p>
+      <p className="text-sm font-semibold text-[#5a0000]">
+        {filtered
+          ? "No business records match your search or filters"
+          : `No business records found for fee year ${selectedYear}.`}
+      </p>
+      {filtered ? (
+        <>
+          <p className="text-xs text-[#8a5a58] mt-1 max-w-[320px] mx-auto mb-3">
+            Try adjusting your search keyword, payment status, or business type filter.
+          </p>
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="inline-flex items-center gap-1.5 rounded border border-[#dcc6c4] bg-white px-3 py-1.5 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] transition-colors"
+            >
+              Reset Filters
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="text-xs text-[#8a5a58] mt-1">
+          Select another fee year from the dropdown above to view records.
+        </p>
+      )}
     </div>
   );
 }
@@ -105,17 +140,62 @@ function EmptyState({ message }: { message: string }) {
 // ---------------------------------------------------------------------------
 export default function GarbageFeeDashboardPage() {
   const [selectedYear, setSelectedYear] = useState<number>(DEFAULT_YEAR);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  // Derive stats and filtered records from mock data (swap with API call later)
+  // Derive dashboard stats from all mock records for selectedYear
   const stats = useMemo(
     () => computeDashboardStats(MOCK_BUSINESS_RECORDS, selectedYear),
     [selectedYear]
   );
 
+  // All records for the selected fee year
   const yearRecords = useMemo(
     () => MOCK_BUSINESS_RECORDS.filter((r) => r.feeYear === selectedYear),
     [selectedYear]
   );
+
+  // Dynamically derive available business types from existing records
+  const availableBusinessTypes = useMemo(() => {
+    const types = new Set<string>();
+    MOCK_BUSINESS_RECORDS.forEach((r) => {
+      if (r.businessType) types.add(r.businessType);
+    });
+    return Array.from(types).sort();
+  }, []);
+
+  // Filtered records matching search and filter selections
+  const filteredRecords = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return yearRecords.filter((record) => {
+      const matchesSearch =
+        !q ||
+        record.businessName.toLowerCase().includes(q) ||
+        (record.ownerName && record.ownerName.toLowerCase().includes(q)) ||
+        record.id.toLowerCase().includes(q);
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "paid" && record.status === "paid") ||
+        (statusFilter === "unpaid" &&
+          (record.status === "unpaid" || record.status === "overdue"));
+
+      const matchesType =
+        typeFilter === "all" || record.businessType === typeFilter;
+
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [yearRecords, search, statusFilter, typeFilter]);
+
+  const hasActiveFilters =
+    search.trim() !== "" || statusFilter !== "all" || typeFilter !== "all";
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+  };
 
   return (
     <div className="space-y-6">
@@ -128,8 +208,7 @@ export default function GarbageFeeDashboardPage() {
             Garbage Fee Management
           </h2>
           <p className="text-[13px] text-[#8a5a58] mt-1 max-w-[480px]">
-            Manage business registrations and track annual garbage collection
-            fees.
+            Manage business registrations and track annual garbage collection fees.
           </p>
         </div>
 
@@ -139,10 +218,6 @@ export default function GarbageFeeDashboardPage() {
             selected={selectedYear}
             onChange={setSelectedYear}
           />
-          {/*
-           * "Add New Business" — route not yet confirmed in the existing project.
-           * Button is intentionally kept without an href until the route exists.
-           */}
           <button
             type="button"
             id="add-new-business-btn"
@@ -200,7 +275,113 @@ export default function GarbageFeeDashboardPage() {
       />
 
       {/* ------------------------------------------------------------------ */}
-      {/* D. Business Payment Activity Table                                   */}
+      {/* D. Search and Filter Section                                         */}
+      {/* ------------------------------------------------------------------ */}
+      <section
+        className="bg-white rounded-lg border border-[#f0e6e5] shadow-[0_2px_10px_rgba(90,0,0,0.06)] p-4"
+        aria-label="Search and filter payment records"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4">
+          {/* Search bar */}
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor="dashboard-search"
+              className="block text-[11px] font-semibold uppercase tracking-wider text-[#8a5a58] mb-1.5"
+            >
+              Search
+            </label>
+            <div className="relative">
+              <span
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8a5a58] text-sm pointer-events-none"
+                aria-hidden="true"
+              >
+                🔍
+              </span>
+              <input
+                id="dashboard-search"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by business name, owner name, or registration number..."
+                className="w-full rounded border border-[#dcc6c4] bg-white pl-9 pr-8 py-2 text-sm text-[#4a4a4a] placeholder:text-[#c0a8a6] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30"
+                aria-label="Search business records"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8a5a58] hover:text-[#5a0000] text-xs p-0.5"
+                  aria-label="Clear search query"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Payment Status Filter */}
+          <div className="sm:min-w-[160px]">
+            <label
+              htmlFor="dashboard-status-filter"
+              className="block text-[11px] font-semibold uppercase tracking-wider text-[#8a5a58] mb-1.5"
+            >
+              Payment Status
+            </label>
+            <select
+              id="dashboard-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded border border-[#dcc6c4] bg-white px-3 py-2 text-sm text-[#5a0000] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30 cursor-pointer font-medium"
+              aria-label="Filter by payment status"
+            >
+              <option value="all">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+
+          {/* Business Type Filter */}
+          <div className="sm:min-w-[200px]">
+            <label
+              htmlFor="dashboard-type-filter"
+              className="block text-[11px] font-semibold uppercase tracking-wider text-[#8a5a58] mb-1.5"
+            >
+              Business Type
+            </label>
+            <select
+              id="dashboard-type-filter"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full rounded border border-[#dcc6c4] bg-white px-3 py-2 text-sm text-[#5a0000] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30 cursor-pointer font-medium"
+              aria-label="Filter by business type"
+            >
+              <option value="all">All Business Types</option>
+              {availableBusinessTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="whitespace-nowrap rounded border border-[#dcc6c4] bg-white px-3 py-2 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] transition-colors"
+                aria-label="Reset all search filters"
+              >
+                Reset Filters
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* E. Business Payment Activity Table                                   */}
       {/* ------------------------------------------------------------------ */}
       <section className="bg-white rounded-lg border border-[#f0e6e5] shadow-[0_2px_10px_rgba(90,0,0,0.08)]">
         {/* Table header */}
@@ -210,19 +391,22 @@ export default function GarbageFeeDashboardPage() {
               Business Payment Records
             </h3>
             <p className="text-[11.5px] text-[#8a5a58] mt-0.5">
-              Annual fee payment status for all registered businesses — FY{" "}
-              {selectedYear}
+              Annual fee payment status for all registered businesses — FY {selectedYear}
             </p>
           </div>
           <span className="text-[11px] font-semibold text-[#8a5a58]">
-            {yearRecords.length} record{yearRecords.length !== 1 ? "s" : ""}
+            {filteredRecords.length !== yearRecords.length
+              ? `Showing ${filteredRecords.length} of ${yearRecords.length} records`
+              : `${yearRecords.length} record${yearRecords.length !== 1 ? "s" : ""}`}
           </span>
         </div>
 
         {/* Table */}
-        {yearRecords.length === 0 ? (
+        {filteredRecords.length === 0 ? (
           <EmptyState
-            message={`No business records found for fee year ${selectedYear}.`}
+            filtered={hasActiveFilters}
+            selectedYear={selectedYear}
+            onReset={hasActiveFilters ? handleResetFilters : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -232,28 +416,31 @@ export default function GarbageFeeDashboardPage() {
             >
               <thead className="bg-[#fcf8f7] text-xs uppercase font-semibold text-[#8a5a58]">
                 <tr>
-                  <th scope="col" className="px-5 py-3">
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
                     Business Name
                   </th>
-                  <th scope="col" className="px-5 py-3">
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
+                    Business Type
+                  </th>
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
                     Ward
                   </th>
-                  <th scope="col" className="px-5 py-3">
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
                     Fee Year
                   </th>
-                  <th scope="col" className="px-5 py-3 text-right">
+                  <th scope="col" className="px-5 py-3 text-right whitespace-nowrap">
                     Fee Amount
                   </th>
-                  <th scope="col" className="px-5 py-3">
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
                     Status
                   </th>
-                  <th scope="col" className="px-5 py-3">
+                  <th scope="col" className="px-5 py-3 whitespace-nowrap">
                     Payment Date
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0e6e5] text-[#4a4a4a]">
-                {yearRecords.map((record) => (
+                {filteredRecords.map((record) => (
                   <tr
                     key={record.id}
                     className="hover:bg-[#fcf8f7] transition-colors"
@@ -262,20 +449,29 @@ export default function GarbageFeeDashboardPage() {
                       <span className="font-medium text-[#5a0000]">
                         {record.businessName}
                       </span>
-                      <br />
+                      {record.ownerName && (
+                        <span className="text-xs text-[#8a5a58] block">
+                          {record.ownerName}
+                        </span>
+                      )}
                       <span className="font-mono text-[10px] text-[#8a5a58]">
                         {record.id}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-[13px]">{record.ward}</td>
-                    <td className="px-5 py-3 text-[13px]">{record.feeYear}</td>
-                    <td className="px-5 py-3 text-right font-medium text-[13px]">
+                    <td className="px-5 py-3 text-[13px] text-[#8a5a58] whitespace-nowrap">
+                      {record.businessType || "—"}
+                    </td>
+                    <td className="px-5 py-3 text-[13px] whitespace-nowrap">{record.ward}</td>
+                    <td className="px-5 py-3 text-[13px] whitespace-nowrap font-medium text-[#5a0000]">
+                      FY {record.feeYear}
+                    </td>
+                    <td className="px-5 py-3 text-right font-medium text-[13px] whitespace-nowrap">
                       {formatLKR(record.feeAmount)}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3 whitespace-nowrap">
                       <PaymentStatusBadge status={record.status} />
                     </td>
-                    <td className="px-5 py-3 text-[13px] text-[#8a5a58]">
+                    <td className="px-5 py-3 text-[13px] text-[#8a5a58] whitespace-nowrap">
                       {formatDate(record.paymentDate)}
                     </td>
                   </tr>

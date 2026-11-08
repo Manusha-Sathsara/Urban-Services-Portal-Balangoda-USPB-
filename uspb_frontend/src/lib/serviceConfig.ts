@@ -79,21 +79,18 @@ export const GARBAGE_FEES_SERVICE_CONFIG: ServiceConfig = {
     },
     {
       name: "Business List",
-      href: "#",
+      href: "/garbage-fees/business",
       icon: "🏪",
-      badge: "Upcoming",
     },
     {
       name: "Payment Management",
-      href: "#",
+      href: "/garbage-fees/payment",
       icon: "💳",
-      badge: "Upcoming",
     },
     {
       name: "Annual Payment Records",
-      href: "#",
+      href: "/garbage-fees/annual",
       icon: "📁",
-      badge: "Upcoming",
     },
   ],
 };
