@@ -31,7 +31,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${merriweather.variable} scroll-smooth h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#fcf8f7] text-[#4a4a4a]">{children}</body>
     </html>
   );
 }
