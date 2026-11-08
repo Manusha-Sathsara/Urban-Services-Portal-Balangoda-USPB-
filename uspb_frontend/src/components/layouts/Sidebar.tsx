@@ -13,7 +13,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Toggle Button (Visible on screens < md) */}
-      <div className="md:hidden sticky top-16 z-20 flex items-center justify-between border-b border-[#f0e6e5] bg-[#fcf8f7] px-4 py-2">
+      <div className="md:hidden sticky top-16 z-20 flex items-center justify-between border-b border-[#f0e6e5] bg-white px-4 py-2">
         <span className="text-xs font-bold uppercase tracking-wider text-[#8a5a58]">
           {config.navSectionLabel}
         </span>
@@ -31,16 +31,16 @@ export function Sidebar() {
 
       {/* Shared Sidebar Container */}
       <aside
-        className={`w-64 shrink-0 border-r border-[#f0e6e5] bg-[#fcf8f7] p-4 transition-all duration-200 dark:border-gray-800 dark:bg-gray-950/50 ${
+        className={`w-64 shrink-0 border-r border-[#f0e6e5] bg-white p-4 transition-all duration-200 ${
           isMobileOpen ? "block" : "hidden md:block"
         }`}
       >
         {/* Section Heading */}
         <div className="mb-4 px-3 flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a5a58] dark:text-gray-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a5a58]">
             {config.navSectionLabel}
           </span>
-          <span className="text-[10px] rounded bg-[#f0e0df] px-1.5 py-0.5 font-mono font-medium text-[#5a0000] dark:bg-gray-800 dark:text-gray-300">
+          <span className="text-[10px] rounded bg-[#f0e0df] px-1.5 py-0.5 font-mono font-medium text-[#5a0000]">
             USPB
           </span>
         </div>
@@ -65,8 +65,8 @@ export function Sidebar() {
                   isActive
                     ? "bg-[#800000] text-white shadow-xs font-semibold"
                     : isPlaceholder
-                    ? "text-[#8a5a58] hover:bg-[#f0e0df]/40 hover:text-[#5a0000] dark:text-gray-400 dark:hover:bg-gray-900/60 cursor-pointer"
-                    : "text-[#5a0000] hover:bg-[#f0e0df]/70 hover:text-[#5a0000] dark:text-gray-300 dark:hover:bg-gray-800/60 dark:hover:text-white"
+                    ? "text-[#8a5a58] hover:bg-[#f0e0df]/40 hover:text-[#5a0000] cursor-pointer"
+                    : "text-[#5a0000] hover:bg-[#f0e0df]/70 hover:text-[#5a0000]"
                 }`}
                 title={
                   isPlaceholder
@@ -89,7 +89,7 @@ export function Sidebar() {
                     className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                       isActive
                         ? "bg-white/20 text-white"
-                        : "bg-[#fbbf24]/20 text-[#5a3a00] border border-[#fbbf24]/40 dark:bg-amber-950 dark:text-amber-300"
+                        : "bg-[#fbbf24]/20 text-[#5a3a00] border border-[#fbbf24]/40"
                     }`}
                   >
                     {item.badge}
@@ -101,8 +101,8 @@ export function Sidebar() {
         </nav>
 
         {/* Informative footer card for non-implemented sections or quick context */}
-        <div className="mt-8 rounded-lg border border-[#f0e6e5] bg-white p-3 text-[11px] text-[#8a5a58] shadow-2xs dark:border-gray-800 dark:bg-gray-900/50">
-          <p className="font-semibold text-[#5a0000] dark:text-gray-200">
+        <div className="mt-8 rounded-lg border border-[#f0e6e5] bg-[#faf4f3] p-3 text-[11px] text-[#8a5a58] shadow-2xs">
+          <p className="font-semibold text-[#5a0000]">
             {config.serviceName}
           </p>
           <p className="mt-0.5 text-[10.5px] leading-relaxed">

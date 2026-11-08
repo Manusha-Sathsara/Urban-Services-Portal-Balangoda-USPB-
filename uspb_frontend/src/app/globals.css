@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
+html {
+  color-scheme: light;
+}
+
 :root {
   --maroon: #5a0000;
   --red: #800000;
