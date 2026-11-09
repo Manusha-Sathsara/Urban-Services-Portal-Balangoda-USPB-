@@ -3,22 +3,22 @@ export default function EnvironmentalCertsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h2 className="font-serif text-[22px] text-[#5a0000] leading-tight">
             Environmental Clearances & Certifications
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-[13px] text-[#8a5a58] mt-1">
             Process business environmental compliance applications and inspections.
           </p>
         </div>
-        <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 transition">
+        <button className="btn-hover-fx rounded bg-[#800000] px-4 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-[#5a0000] transition">
           + New Application
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="rounded-lg border border-[#f0e6e5] bg-white p-6 shadow-[0_2px_10px_rgba(90,0,0,0.08)]">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-800">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs uppercase font-semibold text-gray-500">
+          <table className="min-w-full divide-y divide-[#f0e6e5] text-left text-sm">
+            <thead className="bg-[#fcf8f7] text-xs uppercase font-semibold text-[#8a5a58]">
               <tr>
                 <th className="px-4 py-3">Registration No</th>
                 <th className="px-4 py-3">Business Name</th>
@@ -27,14 +27,14 @@ export default function EnvironmentalCertsPage() {
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
-              <tr>
-                <td className="px-4 py-3 font-mono text-xs">ENV-BAL-2026-004</td>
-                <td className="px-4 py-3">Saman Tea Factory</td>
+            <tbody className="divide-y divide-[#f0e6e5] text-[#4a4a4a]">
+              <tr className="hover:bg-[#fcf8f7] transition-colors">
+                <td className="px-4 py-3 font-mono text-xs text-[#8a5a58]">ENV-BAL-2026-004</td>
+                <td className="px-4 py-3 font-medium text-[#5a0000]">Saman Tea Factory</td>
                 <td className="px-4 py-3">S. D. Saman</td>
                 <td className="px-4 py-3">Category A (High Impact)</td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
                     Inspected
                   </span>
                 </td>
