@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Merriweather } from "next/font/google";
+import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,7 +32,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${merriweather.variable} scroll-smooth h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#fcf8f7] text-[#4a4a4a]">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#fcf8f7] text-[#4a4a4a]">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

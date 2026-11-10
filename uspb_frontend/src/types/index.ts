@@ -13,12 +13,41 @@ export interface User {
   username: string;
   role: UserRole;
   school_id?: number | null;
+  is_active: boolean;
+  must_change_password: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface AuthResponse {
-  token: string;
   user: User;
+  csrf_token?: string;
+}
+
+export interface AuditLog {
+  id: number;
+  actor_user_id?: number | null;
+  action: string;
+  target_type: string;
+  target_id: string;
+  ip_address: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  username: string;
+  temporary_password: string;
+  role: UserRole;
+  school_id?: number | null;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  role?: UserRole;
+  school_id?: number | null;
+  is_active?: boolean;
 }
 
 export interface GarbageFeeRecord {
@@ -28,7 +57,7 @@ export interface GarbageFeeRecord {
   assessment_no: string;
   amount: number;
   status: "paid" | "pending" | "overdue";
-  period: string; // e.g. "2026-Q1"
+  period: string;
   paid_at?: string;
   created_at: string;
 }
