@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +8,7 @@ import axios from "axios";
 import { dashboardByRole, useAuth } from "@/lib/auth";
 import { ApiResponse } from "@/types";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading, login } = useAuth();
@@ -149,5 +149,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#fcf8f7] text-sm text-[#5a0000]">
+          Loading sign-in portal...
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

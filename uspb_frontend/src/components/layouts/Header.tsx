@@ -4,13 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { getServiceConfig } from "@/lib/serviceConfig";
+import { useAuth } from "@/lib/auth";
 
 export interface HeaderProps {
-  /** Optional role override; if omitted, automatically derived from the active service route */
   userRole?: string;
-  /** Optional user name override; if omitted, uses service default */
   userName?: string;
-  /** Optional service name override; if omitted, automatically derived from active route */
   serviceName?: string;
 }
 
@@ -21,15 +19,14 @@ export function Header({
 }: HeaderProps) {
   const pathname = usePathname();
   const config = getServiceConfig(pathname);
+  const { user, logout } = useAuth();
 
-  // Dynamic values defaulting to service-specific configuration
   const activeServiceName = customServiceName || config.serviceName;
-  const activeRoleTitle = userRole || config.roleTitle;
-  const activeUserName = userName || config.defaultUserName;
+  const activeRoleTitle = userRole || user?.role || config.roleTitle;
+  const activeUserName = userName || user?.name || config.defaultUserName;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#f0e6e5] bg-white px-4 md:px-6 shadow-2xs backdrop-blur transition-all">
-      {/* Service & Portal Branding */}
       <div className="flex items-center gap-3">
         <Link
           href="/"
@@ -58,9 +55,7 @@ export function Header({
         </Link>
       </div>
 
-      {/* Right-hand Controls & Role Badge */}
-      <div className="flex items-center gap-2 md:gap-4">
-        {/* Link back to public portal (hidden on very small screens) */}
+      <div className="flex items-center gap-2 md:gap-3">
         <Link
           href="/"
           className="hidden lg:inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-[#8a5a58] hover:bg-[#faf4f3] hover:text-[#5a0000] transition-colors"
@@ -68,9 +63,8 @@ export function Header({
           <span aria-hidden="true">&larr;</span> Public Portal
         </Link>
 
-        {/* User profile & service role badge */}
         <div
-          className="flex items-center gap-2 rounded-full border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 shadow-xs max-w-[280px] sm:max-w-none"
+          className="flex items-center gap-2 rounded-full border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 shadow-xs max-w-[260px] sm:max-w-none"
           title={`Active Role: ${activeRoleTitle}`}
         >
           <div
@@ -87,13 +81,20 @@ export function Header({
           </div>
         </div>
 
-        {/* Sign out link */}
         <Link
-          href="/login"
+          href="/change-password"
+          className="hidden sm:inline-flex shrink-0 rounded border border-[#f0e6e5] bg-[#faf4f3] px-2.5 py-1.5 text-xs font-medium text-[#5a0000] hover:bg-[#f0e0df] transition"
+        >
+          Password
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => void logout()}
           className="btn-hover-fx shrink-0 rounded border border-[#dcc6c4] bg-white px-3 py-1.5 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] hover:border-[#800000] transition"
         >
           Sign Out
-        </Link>
+        </button>
       </div>
     </header>
   );
