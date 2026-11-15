@@ -1,434 +1,175 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
-import { ApiResponse, AuditLog, CreateUserInput, User, UserRole } from "@/types";
+import { ActiveSession, ApiResponse, AuditLog, AuditLogPage, School, User } from "@/types";
 
-const ROLES: UserRole[] = [
-  "ADMIN",
-  "FEE_OFFICER",
-  "ENV_OFFICER",
-  "GARBAGE_SUPERVISOR",
-  "TEACHER",
-];
-
-export default function AdminDashboardPage() {
+export default function AdminOverviewPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Create user form state
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newUsername, setNewUsername] = useState("");
-  const [newTempPass, setNewTempPass] = useState("");
-  const [newRole, setNewRole] = useState<UserRole>("FEE_OFFICER");
-  const [newSchoolId, setNewSchoolId] = useState("");
-
-  // Reset password modal state
-  const [resetTarget, setResetTarget] = useState<User | null>(null);
-  const [resetPassword, setResetPassword] = useState("");
-
-  const loadData = useCallback(async () => {
-    try {
-      const [usersRes, logsRes] = await Promise.all([
-        api.get<ApiResponse<User[]>>("/admin/users"),
-        api.get<ApiResponse<AuditLog[]>>("/admin/audit-logs?limit=25"),
-      ]);
-      setUsers(usersRes.data.data || []);
-      setAuditLogs(logsRes.data.data || []);
-    } catch {
-      setFeedback({ type: "err", text: "Failed to load admin data from backend." });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [schools, setSchools] = useState<School[]>([]);
+  const [sessions, setSessions] = useState<ActiveSession[]>([]);
+  const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
+  const [dbReady, setDbReady] = useState<"checking" | "connected" | "error">("checking");
 
   useEffect(() => {
     let active = true;
     Promise.all([
       api.get<ApiResponse<User[]>>("/admin/users"),
-      api.get<ApiResponse<AuditLog[]>>("/admin/audit-logs?limit=25"),
+      api.get<ApiResponse<School[]>>("/admin/schools"),
+      api.get<ApiResponse<ActiveSession[]>>("/admin/sessions"),
+      api.get<ApiResponse<AuditLogPage>>("/admin/audit-logs?page=1&limit=5"),
+      api.get<ApiResponse<{ database: string }>>("/ready"),
     ])
-      .then(([usersRes, logsRes]) => {
+      .then(([uRes, sRes, sessRes, logRes, readyRes]) => {
         if (!active) return;
-        setUsers(usersRes.data.data || []);
-        setAuditLogs(logsRes.data.data || []);
+        setUsers(uRes.data.data || []);
+        setSchools(sRes.data.data || []);
+        setSessions(sessRes.data.data || []);
+        setRecentLogs(logRes.data.data?.logs || []);
+        setDbReady(readyRes.data.data?.database === "connected" ? "connected" : "error");
       })
       .catch(() => {
-        if (active) {
-          setFeedback({ type: "err", text: "Failed to load admin data from backend." });
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (active) setDbReady("error");
       });
+
     return () => {
       active = false;
     };
   }, []);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeedback(null);
-
-    const payload: CreateUserInput = {
-      name: newName.trim(),
-      username: newUsername.trim(),
-      temporary_password: newTempPass,
-      role: newRole,
-      school_id: newRole === "TEACHER" && newSchoolId ? Number(newSchoolId) : null,
-    };
-
-    try {
-      await api.post("/admin/users", payload);
-      setFeedback({ type: "ok", text: `Created staff account "${payload.username}".` });
-      setShowCreate(false);
-      setNewName("");
-      setNewUsername("");
-      setNewTempPass("");
-      setNewSchoolId("");
-      await loadData();
-    } catch (err) {
-      const msg = axios.isAxiosError<ApiResponse>(err)
-        ? err.response?.data?.error
-        : undefined;
-      setFeedback({ type: "err", text: msg || "Could not create user." });
-    }
-  };
-
-  const handleToggleActive = async (u: User) => {
-    setFeedback(null);
-    try {
-      await api.patch(`/admin/users/${u.id}`, { is_active: !u.is_active });
-      setFeedback({
-        type: "ok",
-        text: `${u.username} ${u.is_active ? "deactivated (sessions revoked)" : "activated"}.`,
-      });
-      await loadData();
-    } catch {
-      setFeedback({ type: "err", text: "Failed to update account status." });
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetTarget) return;
-    setFeedback(null);
-    try {
-      await api.post(`/admin/users/${resetTarget.id}/reset-password`, {
-        temporary_password: resetPassword,
-      });
-      setFeedback({
-        type: "ok",
-        text: `Temporary password set for "${resetTarget.username}". Existing sessions revoked.`,
-      });
-      setResetTarget(null);
-      setResetPassword("");
-      await loadData();
-    } catch (err) {
-      const msg = axios.isAxiosError<ApiResponse>(err)
-        ? err.response?.data?.error
-        : undefined;
-      setFeedback({ type: "err", text: msg || "Failed to reset password." });
-    }
-  };
-
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.role.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-serif text-[22px] text-[#5a0000] leading-tight">
-            Admin Overview &amp; Access Control
+            Admin Overview
           </h2>
           <p className="text-[13px] text-[#8a5a58] mt-1">
-            Manage Balangoda Urban Council staff accounts, roles, school assignments, and security audit logs.
+            Balangoda Urban Council — System health, access summary, and cross-module status.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreate((prev) => !prev)}
-          className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#5a0000]"
-        >
-          {showCreate ? "Close Form" : "+ Create Staff Account"}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/staff"
+            className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
+          >
+            Manage Staff
+          </Link>
+          <Link
+            href="/admin/schools"
+            className="rounded-lg border border-[#dcc6c4] bg-white px-4 py-2 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+          >
+            Manage Schools
+          </Link>
+        </div>
       </div>
 
-      {feedback && (
-        <div
-          className={`rounded-lg border px-4 py-2.5 text-xs font-medium ${
-            feedback.type === "ok"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-red-200 bg-red-50 text-[#800000]"
-          }`}
-        >
-          {feedback.text}
-        </div>
-      )}
-
-      {/* Summary Cards */}
+      {/* System & Access Metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
-            Total Staff Accounts
+            Staff Accounts
           </p>
           <p className="mt-2 text-2xl font-bold text-[#5a0000]">{users.length}</p>
-        </div>
-        <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
-            Active Accounts
-          </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-700">
-            {users.filter((u) => u.is_active).length}
+          <p className="mt-1 text-xs text-emerald-700">
+            {users.filter((u) => u.is_active).length} active accounts
           </p>
         </div>
+
         <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
-            Teacher Accounts
+            Registered Schools
           </p>
-          <p className="mt-2 text-2xl font-bold text-[#5a0000]">
-            {users.filter((u) => u.role === "TEACHER").length}
+          <p className="mt-2 text-2xl font-bold text-[#5a0000]">{schools.length}</p>
+          <p className="mt-1 text-xs text-[#8a5a58]">
+            {users.filter((u) => u.role === "TEACHER").length} assigned teachers
           </p>
         </div>
+
         <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
-            Recent Audit Events
+            Active Sessions
           </p>
-          <p className="mt-2 text-2xl font-bold text-[#5a0000]">{auditLogs.length}</p>
+          <p className="mt-2 text-2xl font-bold text-[#5a0000]">{sessions.length}</p>
+          <Link href="/admin/settings" className="mt-1 inline-block text-xs text-[#800000] hover:underline">
+            Inspect &amp; revoke &rarr;
+          </Link>
+        </div>
+
+        <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
+            Database &amp; RLS
+          </p>
+          <p
+            className={`mt-2 text-2xl font-bold ${
+              dbReady === "connected"
+                ? "text-emerald-700"
+                : dbReady === "checking"
+                ? "text-[#8a5a58]"
+                : "text-[#800000]"
+            }`}
+          >
+            {dbReady === "connected"
+              ? "Healthy"
+              : dbReady === "checking"
+              ? "Checking..."
+              : "Degraded"}
+          </p>
+          <p className="mt-1 text-xs text-[#8a5a58]">PostgreSQL RLS enforced</p>
         </div>
       </div>
 
-      {/* Create User Panel */}
-      {showCreate && (
-        <form
-          onSubmit={handleCreateUser}
-          className="rounded-xl border border-[#dcc6c4] bg-white p-6 shadow-xs space-y-4"
-        >
-          <h3 className="font-serif text-base font-bold text-[#5a0000]">
-            Create New Staff Account
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="block text-xs font-semibold text-[#5a0000]">Full Name</label>
-              <input
-                type="text"
-                required
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#5a0000]">Username</label>
-              <input
-                type="text"
-                required
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#5a0000]">
-                Temporary Password (min 8)
-              </label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={newTempPass}
-                onChange={(e) => setNewTempPass(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#5a0000]">Role</label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as UserRole)}
-                className="mt-1 w-full rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {newRole === "TEACHER" && (
-              <div>
-                <label className="block text-xs font-semibold text-[#5a0000]">
-                  Assigned School ID
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  value={newSchoolId}
-                  onChange={(e) => setNewSchoolId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCreate(false)}
-              className="rounded-lg border border-[#dcc6c4] px-4 py-2 text-xs font-semibold text-[#5a0000]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
-            >
-              Create Account
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Reset Password Inline Panel */}
-      {resetTarget && (
-        <form
-          onSubmit={handleResetPassword}
-          className="rounded-xl border border-[#fbbf24] bg-[#fff8e1] p-5 space-y-3"
-        >
-          <p className="text-sm font-semibold text-[#5a0000]">
-            Reset Temporary Password for {resetTarget.username}
+      {/* Cross-Module Summary inside Admin Portal */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
+            Garbage Fee Management
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="password"
-              required
-              minLength={8}
-              placeholder="New temporary password (min 8 chars)"
-              value={resetPassword}
-              onChange={(e) => setResetPassword(e.target.value)}
-              className="flex-1 rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white"
-            >
-              Confirm Reset
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setResetTarget(null);
-                setResetPassword("");
-              }}
-              className="rounded-lg border border-[#dcc6c4] bg-white px-4 py-2 text-xs font-semibold text-[#5a0000]"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Users Table */}
-      <div className="rounded-xl border border-[#f0e6e5] bg-white shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
-        <div className="flex flex-col gap-3 border-b border-[#f0e6e5] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="font-serif text-base font-bold text-[#5a0000]">
-            Staff Directory
-          </h3>
-          <input
-            type="search"
-            placeholder="Search name, username, or role..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-64 rounded-lg border border-[#dcc6c4] px-3 py-1.5 text-xs focus:border-[#800000] focus:outline-none"
-          />
+          <p className="mt-2 text-sm text-[#5a413d]">
+            Assigned Officers: {users.filter((u) => u.role === "FEE_OFFICER").length}
+          </p>
+          <p className="mt-1 text-xs text-[#8a5a58]">
+            Protected by JWT + CSRF + FEE_OFFICER RBAC
+          </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#faf4f3] text-[#5a0000] uppercase">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Username</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">School ID</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0e6e5]">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[#8a5a58]">
-                    Loading staff accounts...
-                  </td>
-                </tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[#8a5a58]">
-                    No matching accounts found.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#fcf8f7]">
-                    <td className="px-4 py-3 font-medium text-[#1b1c1c]">{u.name}</td>
-                    <td className="px-4 py-3 font-mono text-[#5a413d]">{u.username}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded bg-[#f0e0df] px-2 py-0.5 font-semibold text-[#5a0000]">
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-[#5a413d]">{u.school_id ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-semibold ${
-                          u.is_active
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-[#800000]"
-                        }`}
-                      >
-                        {u.is_active ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => setResetTarget(u)}
-                        className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
-                      >
-                        Reset PW
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleToggleActive(u)}
-                        className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#800000] hover:bg-red-50"
-                      >
-                        {u.is_active ? "Deactivate" : "Activate"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
+            Environmental Certificates
+          </p>
+          <p className="mt-2 text-sm text-[#5a413d]">
+            Assigned Officers: {users.filter((u) => u.role === "ENV_OFFICER").length}
+          </p>
+          <p className="mt-1 text-xs text-[#8a5a58]">
+            Protected by JWT + CSRF + ENV_OFFICER RBAC
+          </p>
+        </div>
+        <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
+            School Waste Rewards
+          </p>
+          <p className="mt-2 text-sm text-[#5a413d]">
+            Teachers: {users.filter((u) => u.role === "TEACHER").length} | Supervisors:{" "}
+            {users.filter((u) => u.role === "GARBAGE_SUPERVISOR").length}
+          </p>
+          <p className="mt-1 text-xs text-[#8a5a58]">
+            Single-school isolation enforced per teacher
+          </p>
         </div>
       </div>
 
-      {/* Audit Logs */}
+      {/* Recent Audit Events Preview */}
       <div className="rounded-xl border border-[#f0e6e5] bg-white shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
-        <div className="border-b border-[#f0e6e5] p-4">
+        <div className="flex items-center justify-between border-b border-[#f0e6e5] p-4">
           <h3 className="font-serif text-base font-bold text-[#5a0000]">
-            Security Audit Log (Latest 25)
+            Recent Security Events
           </h3>
+          <Link
+            href="/admin/audit-logs"
+            className="text-xs font-semibold text-[#800000] hover:underline"
+          >
+            View Full Audit Log &rarr;
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -436,29 +177,37 @@ export default function AdminDashboardPage() {
               <tr>
                 <th className="px-4 py-3">Timestamp</th>
                 <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">Actor ID</th>
+                <th className="px-4 py-3">Actor</th>
                 <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">IP</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0e6e5]">
-              {auditLogs.map((log) => (
-                <tr key={log.id}>
-                  <td className="px-4 py-2.5 text-[#5a413d]">
-                    {new Date(log.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono font-semibold text-[#5a0000]">
-                    {log.action}
-                  </td>
-                  <td className="px-4 py-2.5">{log.actor_user_id ?? "—"}</td>
-                  <td className="px-4 py-2.5">
-                    {log.target_type}:{log.target_id}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-[#8a5a58]">
-                    {log.ip_address || "—"}
+              {recentLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-5 text-center text-[#8a5a58]">
+                    No audit events recorded yet.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                recentLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="px-4 py-2.5 text-[#5a413d]">
+                      {new Date(log.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono font-semibold text-[#5a0000]">
+                      {log.action}
+                    </td>
+                    <td className="px-4 py-2.5">{log.actor_user_id ?? "—"}</td>
+                    <td className="px-4 py-2.5">
+                      {log.target_type}:{log.target_id}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[#8a5a58]">
+                      {log.ip_address || "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

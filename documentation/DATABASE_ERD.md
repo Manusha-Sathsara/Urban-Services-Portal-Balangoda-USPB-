@@ -1,11 +1,22 @@
 # Database Entity-Relationship Diagrams
 
-## 1. Authentication, Sessions & Audit Schema (Implemented)
+## 1. Authentication, Schools, Sessions & Audit Schema (Implemented)
 
 ```mermaid
 erDiagram
+    schools ||--o{ users : "assigned teachers"
     users ||--o{ auth_sessions : "has active/revoked"
     users ||--o{ audit_logs : "performs actions"
+
+    schools {
+        serial id PK
+        varchar name
+        varchar code UK
+        text address
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
     users {
         serial id PK
