@@ -18,6 +18,7 @@
 | Oct 29 | Auth Cookies | Original `api.ts` stored JWT in `localStorage` (XSS risk) | Migrated backend & frontend to `HttpOnly` cookies + `X-CSRF-Token` double-submit |
 | Nov 1 | Go Build | `fiber/middleware/limiter` failed compilation due to missing `github.com/tinylib/msgp/msgp` in `go.sum` | Ran `go get github.com/gofiber/fiber/v2/middleware/limiter@v2.52.15` and `go mod tidy` |
 | Nov 9 | Theme Sync | `feat/auth-module` had old Oct 14 green theme | Merged `origin/dev` to adopt Balangoda UC white/maroon/gold Figma theme |
+| Nov 13 | React Lint & SSR | `react-hooks/set-state-in-effect` in `auth.tsx` & `admin/page.tsx`; `useSearchParams()` in `login/page.tsx` | Refactored `useEffect` to async `.then()` callbacks; wrapped `LoginForm` in `<Suspense>` |
 
 ---
 

@@ -24,8 +24,8 @@
 | **Phase 1: DB & RLS** | `users` hardening, `auth_sessions`, `audit_logs`, Postgres RLS, `bootstrap_db.sql` | **Done** | Least-privilege `uspb_app` role (`NOBYPASSRLS`) |
 | **Phase 2: Backend Auth** | `config`, `WithRLS`, JWT/CSRF/RBAC middleware, `auth` module, rate limiter, `seed_admin` | **Done** | Wired in `cmd/server/main.go` |
 | **Phase 3: Backend Tests** | Unit & HTTP tests for config, middleware, lockout, refresh rotation, RBAC | **Done** | 10/10 Go tests passing |
-| **Phase 4: Frontend Auth** | Cookie-based `api.ts`, `AuthProvider`, Figma-themed `/login`, `/change-password`, `/dashboard`, `/access-denied`, `/admin` user management | **In Progress** | Synced with `origin/dev` white/maroon theme |
-| **Phase 5: Verification** | `npm run lint`, `npm run build`, live DB migration & end-to-end API/UI checks | **Pending** | — |
+| **Phase 4: Frontend Auth** | Cookie-based `api.ts`, `AuthProvider`, Figma-themed `/login`, `/change-password`, `/dashboard`, `/access-denied`, `/admin` user management | **Done** | Synced with `origin/dev` white/maroon theme |
+| **Phase 5: Verification** | `eslint`, `next build`, `go test ./...`, live DB migration & end-to-end API/UI checks | **In Progress** | Backend & ESLint passing; verifying `next build` |
 | **Phase 6: School Rewards** | Students, waste collections, points ledger, payouts, badges | **Planned** | Next after `feat/auth-module` PR |
 
 ---
