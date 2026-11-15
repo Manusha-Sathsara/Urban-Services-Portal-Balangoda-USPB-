@@ -35,6 +35,34 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface AuditLogPage {
+  logs: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface School {
+  id: number;
+  name: string;
+  code: string;
+  address: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  user_id: number;
+  username: string;
+  role: UserRole;
+  user_agent: string;
+  ip_address: string;
+  created_at: string;
+  expires_at: string;
+}
+
 export interface CreateUserInput {
   name: string;
   username: string;

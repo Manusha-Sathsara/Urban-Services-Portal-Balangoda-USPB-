@@ -149,30 +149,35 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
 export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
   key: "admin",
   serviceName: "Urban Services Portal",
-  serviceSubtitle: "Balangoda Urban Council",
+  serviceSubtitle: "Balangoda Urban Council — System Administration",
   roleTitle: "System Administrator",
   defaultUserName: "UC System Administrator",
   navSectionLabel: "Administration",
   navItems: [
     {
-      name: "Admin Overview",
+      name: "Overview",
       href: "/admin",
       icon: "⚙️",
     },
     {
-      name: "Garbage Fees",
-      href: "/garbage-fees/dashboard",
-      icon: "📊",
+      name: "Staff Management",
+      href: "/admin/staff",
+      icon: "👥",
     },
     {
-      name: "Environmental Certs",
-      href: "/environmental",
+      name: "Schools Registry",
+      href: "/admin/schools",
+      icon: "🏫",
+    },
+    {
+      name: "Audit & Monitoring",
+      href: "/admin/audit-logs",
       icon: "🛡️",
     },
     {
-      name: "School Rewards",
-      href: "/schools",
-      icon: "🎓",
+      name: "Settings & Security",
+      href: "/admin/settings",
+      icon: "🔐",
     },
   ],
 };
@@ -245,6 +250,9 @@ export function isNavItemActive(pathname: string | null | undefined, href: strin
 
   // Exact match
   if (pathname === href) return true;
+
+  // Admin Overview should only highlight on exact /admin
+  if (href === "/admin") return false;
 
   // Handle base route (/garbage-fees) as active for dashboard
   if (

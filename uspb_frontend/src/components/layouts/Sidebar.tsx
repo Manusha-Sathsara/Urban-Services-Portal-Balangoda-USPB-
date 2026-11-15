@@ -99,16 +99,6 @@ export function Sidebar() {
             );
           })}
         </nav>
-
-        {/* Informative footer card for non-implemented sections or quick context */}
-        <div className="mt-8 rounded-lg border border-[#f0e6e5] bg-[#faf4f3] p-3 text-[11px] text-[#8a5a58] shadow-2xs">
-          <p className="font-semibold text-[#5a0000]">
-            {config.serviceName}
-          </p>
-          <p className="mt-0.5 text-[10.5px] leading-relaxed">
-            Balangoda Urban Council municipal portal interface.
-          </p>
-        </div>
       </aside>
     </>
   );

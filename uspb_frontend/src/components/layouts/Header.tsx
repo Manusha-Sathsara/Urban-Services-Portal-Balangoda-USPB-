@@ -82,10 +82,10 @@ export function Header({
         </div>
 
         <Link
-          href="/change-password"
+          href={user?.role === "ADMIN" ? "/admin/settings" : "/change-password"}
           className="hidden sm:inline-flex shrink-0 rounded border border-[#f0e6e5] bg-[#faf4f3] px-2.5 py-1.5 text-xs font-medium text-[#5a0000] hover:bg-[#f0e0df] transition"
         >
-          Password
+          {user?.role === "ADMIN" ? "Settings" : "Password"}
         </Link>
 
         <button
