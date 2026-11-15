@@ -98,3 +98,50 @@ type AuthResult struct {
 	RefreshToken string `json:"-"`
 	CSRFToken    string `json:"csrf_token,omitempty"`
 }
+
+type School struct {
+	ID        int       `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	Code      string    `db:"code" json:"code"`
+	Address   string    `db:"address" json:"address"`
+	IsActive  bool      `db:"is_active" json:"is_active"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type CreateSchoolRequest struct {
+	Name    string `json:"name"`
+	Code    string `json:"code"`
+	Address string `json:"address"`
+}
+
+type UpdateSchoolRequest struct {
+	Name     *string `json:"name"`
+	Address  *string `json:"address"`
+	IsActive *bool   `json:"is_active"`
+}
+
+type AuditLogFilter struct {
+	Page   int
+	Limit  int
+	Action string
+	Search string
+}
+
+type AuditLogPage struct {
+	Logs  []AuditLog `json:"logs"`
+	Total int        `json:"total"`
+	Page  int        `json:"page"`
+	Limit int        `json:"limit"`
+}
+
+type ActiveSessionDTO struct {
+	ID        string    `db:"id" json:"id"`
+	UserID    int       `db:"user_id" json:"user_id"`
+	Username  string    `db:"username" json:"username"`
+	Role      string    `db:"role" json:"role"`
+	UserAgent string    `db:"user_agent" json:"user_agent"`
+	IPAddress string    `db:"ip_address" json:"ip_address"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ExpiresAt time.Time `db:"expires_at" json:"expires_at"`
+}

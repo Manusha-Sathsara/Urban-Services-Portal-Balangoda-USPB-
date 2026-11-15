@@ -278,8 +278,57 @@ func (s *Service) AdminResetPassword(ctx context.Context, adminID int, targetID 
 	return s.repo.WriteAuditLog(ctx, &adminID, RoleAdmin, false, "ADMIN_PASSWORD_RESET", "user", strconv.Itoa(targetID), ip, nil)
 }
 
-func (s *Service) ListAuditLogs(ctx context.Context, adminID int, limit int) ([]AuditLog, error) {
-	return s.repo.ListAuditLogs(ctx, adminID, limit)
+func (s *Service) ListAuditLogs(ctx context.Context, adminID int, filter AuditLogFilter) (*AuditLogPage, error) {
+	return s.repo.ListAuditLogs(ctx, adminID, filter)
+}
+
+func (s *Service) UnlockUser(ctx context.Context, adminID int, targetID int, ip string) error {
+	if err := s.repo.UnlockUser(ctx, adminID, targetID); err != nil {
+		return err
+	}
+	return s.repo.WriteAuditLog(ctx, &adminID, RoleAdmin, false, "ADMIN_USER_UNLOCKED", "user", strconv.Itoa(targetID), ip, nil)
+}
+
+func (s *Service) ListSchools(ctx context.Context, actorID int, actorRole string) ([]School, error) {
+	return s.repo.ListSchools(ctx, actorID, actorRole)
+}
+
+func (s *Service) CreateSchool(ctx context.Context, adminID int, req CreateSchoolRequest, ip string) (*School, error) {
+	req.Name = strings.TrimSpace(req.Name)
+	req.Code = strings.TrimSpace(strings.ToUpper(req.Code))
+	req.Address = strings.TrimSpace(req.Address)
+	if req.Name == "" || req.Code == "" {
+		return nil, fmt.Errorf("%w: school name and code are required", ErrValidation)
+	}
+	school, err := s.repo.CreateSchool(ctx, adminID, req)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.repo.WriteAuditLog(ctx, &adminID, RoleAdmin, false, "ADMIN_SCHOOL_CREATED", "school", strconv.Itoa(school.ID), ip, map[string]any{
+		"code": school.Code,
+		"name": school.Name,
+	})
+	return school, nil
+}
+
+func (s *Service) UpdateSchool(ctx context.Context, adminID int, schoolID int, req UpdateSchoolRequest, ip string) (*School, error) {
+	school, err := s.repo.UpdateSchool(ctx, adminID, schoolID, req)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.repo.WriteAuditLog(ctx, &adminID, RoleAdmin, false, "ADMIN_SCHOOL_UPDATED", "school", strconv.Itoa(schoolID), ip, nil)
+	return school, nil
+}
+
+func (s *Service) ListActiveSessions(ctx context.Context, adminID int) ([]ActiveSessionDTO, error) {
+	return s.repo.ListActiveSessions(ctx, adminID)
+}
+
+func (s *Service) RevokeSessionByID(ctx context.Context, adminID int, sessionID string, ip string) error {
+	if err := s.repo.RevokeSessionByID(ctx, adminID, sessionID); err != nil {
+		return err
+	}
+	return s.repo.WriteAuditLog(ctx, &adminID, RoleAdmin, false, "ADMIN_SESSION_REVOKED", "session", sessionID, ip, nil)
 }
 
 func (s *Service) IsSessionActive(sessionID string, userID int) (bool, error) {

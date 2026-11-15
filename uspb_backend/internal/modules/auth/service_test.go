@@ -189,8 +189,47 @@ func (m *memoryAuthRepo) AdminResetPassword(_ context.Context, _ int, targetID i
 	return nil
 }
 
-func (m *memoryAuthRepo) ListAuditLogs(_ context.Context, _ int, _ int) ([]AuditLog, error) {
-	return m.auditLogs, nil
+func (m *memoryAuthRepo) ListAuditLogs(_ context.Context, _ int, filter AuditLogFilter) (*AuditLogPage, error) {
+	return &AuditLogPage{
+		Logs:  m.auditLogs,
+		Total: len(m.auditLogs),
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}, nil
+}
+
+func (m *memoryAuthRepo) UnlockUser(_ context.Context, _ int, targetID int) error {
+	if u, ok := m.users[targetID]; ok {
+		u.FailedLoginAttempts = 0
+		u.LockedUntil = nil
+		return nil
+	}
+	return ErrUserNotFound
+}
+
+func (m *memoryAuthRepo) ListSchools(_ context.Context, _ int, _ string) ([]School, error) {
+	return []School{}, nil
+}
+
+func (m *memoryAuthRepo) CreateSchool(_ context.Context, _ int, req CreateSchoolRequest) (*School, error) {
+	return &School{ID: 1, Name: req.Name, Code: req.Code, Address: req.Address, IsActive: true}, nil
+}
+
+func (m *memoryAuthRepo) UpdateSchool(_ context.Context, _ int, schoolID int, _ UpdateSchoolRequest) (*School, error) {
+	return &School{ID: schoolID, IsActive: true}, nil
+}
+
+func (m *memoryAuthRepo) ListActiveSessions(_ context.Context, _ int) ([]ActiveSessionDTO, error) {
+	return []ActiveSessionDTO{}, nil
+}
+
+func (m *memoryAuthRepo) RevokeSessionByID(_ context.Context, _ int, sessionID string) error {
+	if s, ok := m.sessions[sessionID]; ok {
+		now := time.Now()
+		s.RevokedAt = &now
+		return nil
+	}
+	return ErrSessionNotFound
 }
 
 func (m *memoryAuthRepo) WriteAuditLog(_ context.Context, actorID *int, _ string, _ bool, action, targetType, targetID, ip string, _ map[string]any) error {

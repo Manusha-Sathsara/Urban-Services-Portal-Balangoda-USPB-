@@ -44,6 +44,12 @@ func (h *Handler) RegisterRoutes(
 	adminGroup.Post("/users", h.CreateUser)
 	adminGroup.Patch("/users/:id", h.UpdateUser)
 	adminGroup.Post("/users/:id/reset-password", h.AdminResetPassword)
+	adminGroup.Post("/users/:id/unlock", h.UnlockUser)
+	adminGroup.Get("/schools", h.ListSchools)
+	adminGroup.Post("/schools", h.CreateSchool)
+	adminGroup.Patch("/schools/:id", h.UpdateSchool)
+	adminGroup.Get("/sessions", h.ListActiveSessions)
+	adminGroup.Post("/sessions/:id/revoke", h.RevokeSessionByID)
 	adminGroup.Get("/audit-logs", h.ListAuditLogs)
 }
 
@@ -209,13 +215,105 @@ func (h *Handler) AdminResetPassword(c *fiber.Ctx) error {
 
 func (h *Handler) ListAuditLogs(c *fiber.Ctx) error {
 	adminID, _ := c.Locals("user_id").(int)
-	limit, _ := strconv.Atoi(c.Query("limit", "50"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	filter := AuditLogFilter{
+		Page:   page,
+		Limit:  limit,
+		Action: c.Query("action", ""),
+		Search: c.Query("search", ""),
+	}
 
-	logs, err := h.service.ListAuditLogs(c.UserContext(), adminID, limit)
+	result, err := h.service.ListAuditLogs(c.UserContext(), adminID, filter)
 	if err != nil {
 		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch audit logs")
 	}
-	return utils.SuccessResponse(c, fiber.StatusOK, "Audit logs retrieved", logs)
+	return utils.SuccessResponse(c, fiber.StatusOK, "Audit logs retrieved", result)
+}
+
+func (h *Handler) UnlockUser(c *fiber.Ctx) error {
+	targetID, err := strconv.Atoi(c.Params("id"))
+	if err != nil || targetID <= 0 {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid user ID")
+	}
+	adminID, _ := c.Locals("user_id").(int)
+	if err := h.service.UnlockUser(c.UserContext(), adminID, targetID, c.IP()); err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "User not found")
+		}
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to unlock user")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "User account unlocked", nil)
+}
+
+func (h *Handler) ListSchools(c *fiber.Ctx) error {
+	adminID, _ := c.Locals("user_id").(int)
+	role, _ := c.Locals("role").(string)
+	schools, err := h.service.ListSchools(c.UserContext(), adminID, role)
+	if err != nil {
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to list schools")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Schools retrieved", schools)
+}
+
+func (h *Handler) CreateSchool(c *fiber.Ctx) error {
+	var req CreateSchoolRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+	adminID, _ := c.Locals("user_id").(int)
+	school, err := h.service.CreateSchool(c.UserContext(), adminID, req, c.IP())
+	if err != nil {
+		if errors.Is(err, ErrValidation) {
+			return utils.ErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		}
+		return utils.ErrorResponse(c, fiber.StatusConflict, "Could not create school (code may already exist)")
+	}
+	return utils.SuccessResponse(c, fiber.StatusCreated, "School created", school)
+}
+
+func (h *Handler) UpdateSchool(c *fiber.Ctx) error {
+	schoolID, err := strconv.Atoi(c.Params("id"))
+	if err != nil || schoolID <= 0 {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid school ID")
+	}
+	var req UpdateSchoolRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+	adminID, _ := c.Locals("user_id").(int)
+	school, err := h.service.UpdateSchool(c.UserContext(), adminID, schoolID, req, c.IP())
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "School not found")
+		}
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to update school")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "School updated", school)
+}
+
+func (h *Handler) ListActiveSessions(c *fiber.Ctx) error {
+	adminID, _ := c.Locals("user_id").(int)
+	sessions, err := h.service.ListActiveSessions(c.UserContext(), adminID)
+	if err != nil {
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to list active sessions")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Active sessions retrieved", sessions)
+}
+
+func (h *Handler) RevokeSessionByID(c *fiber.Ctx) error {
+	sessionID := c.Params("id")
+	if sessionID == "" {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Session ID is required")
+	}
+	adminID, _ := c.Locals("user_id").(int)
+	if err := h.service.RevokeSessionByID(c.UserContext(), adminID, sessionID, c.IP()); err != nil {
+		if errors.Is(err, ErrSessionNotFound) {
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "Active session not found")
+		}
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to revoke session")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Session revoked", nil)
 }
 
 func (h *Handler) setAuthCookies(c *fiber.Ctx, res *AuthResult) {

@@ -37,7 +37,15 @@ type Repository interface {
 	CreateUser(ctx context.Context, adminID int, u User) (*User, error)
 	UpdateUser(ctx context.Context, adminID int, targetID int, req UpdateUserRequest) (*User, error)
 	AdminResetPassword(ctx context.Context, adminID int, targetID int, newHash string) error
-	ListAuditLogs(ctx context.Context, adminID int, limit int) ([]AuditLog, error)
+	UnlockUser(ctx context.Context, adminID int, targetID int) error
+
+	ListSchools(ctx context.Context, actorID int, actorRole string) ([]School, error)
+	CreateSchool(ctx context.Context, adminID int, req CreateSchoolRequest) (*School, error)
+	UpdateSchool(ctx context.Context, adminID int, schoolID int, req UpdateSchoolRequest) (*School, error)
+
+	ListAuditLogs(ctx context.Context, adminID int, filter AuditLogFilter) (*AuditLogPage, error)
+	ListActiveSessions(ctx context.Context, adminID int) ([]ActiveSessionDTO, error)
+	RevokeSessionByID(ctx context.Context, adminID int, sessionID string) error
 
 	WriteAuditLog(ctx context.Context, actorID *int, actorRole string, authFlow bool, action, targetType, targetID, ip string, meta map[string]any) error
 }
@@ -287,20 +295,141 @@ func (r *PostgresRepository) AdminResetPassword(ctx context.Context, adminID int
 	})
 }
 
-func (r *PostgresRepository) ListAuditLogs(ctx context.Context, adminID int, limit int) ([]AuditLog, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (r *PostgresRepository) UnlockUser(ctx context.Context, adminID int, targetID int) error {
+	return database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE users
+			SET failed_login_attempts = 0, locked_until = NULL, updated_at = NOW()
+			WHERE id = $1
+		`, targetID)
+		if err != nil {
+			return err
+		}
+		if rows, _ := res.RowsAffected(); rows == 0 {
+			return ErrUserNotFound
+		}
+		return nil
+	})
+}
+
+func (r *PostgresRepository) ListSchools(ctx context.Context, actorID int, actorRole string) ([]School, error) {
+	var schools []School
+	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: actorID, Role: actorRole}, func(tx *sqlx.Tx) error {
+		return tx.SelectContext(ctx, &schools, `
+			SELECT id, name, code, address, is_active, created_at, updated_at
+			FROM schools
+			ORDER BY name ASC
+		`)
+	})
+	return schools, err
+}
+
+func (r *PostgresRepository) CreateSchool(ctx context.Context, adminID int, req CreateSchoolRequest) (*School, error) {
+	var s School
+	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		return tx.GetContext(ctx, &s, `
+			INSERT INTO schools (name, code, address)
+			VALUES ($1, $2, $3)
+			RETURNING id, name, code, address, is_active, created_at, updated_at
+		`, req.Name, req.Code, req.Address)
+	})
+	return &s, err
+}
+
+func (r *PostgresRepository) UpdateSchool(ctx context.Context, adminID int, schoolID int, req UpdateSchoolRequest) (*School, error) {
+	var s School
+	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		return tx.GetContext(ctx, &s, `
+			UPDATE schools
+			SET name = COALESCE($1, name),
+			    address = COALESCE($2, address),
+			    is_active = COALESCE($3, is_active),
+			    updated_at = NOW()
+			WHERE id = $4
+			RETURNING id, name, code, address, is_active, created_at, updated_at
+		`, req.Name, req.Address, req.IsActive, schoolID)
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
 	}
+	return &s, err
+}
+
+func (r *PostgresRepository) ListAuditLogs(ctx context.Context, adminID int, filter AuditLogFilter) (*AuditLogPage, error) {
+	if filter.Page <= 0 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 || filter.Limit > 100 {
+		filter.Limit = 20
+	}
+	offset := (filter.Page - 1) * filter.Limit
+
+	var total int
 	var logs []AuditLog
 	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		if err := tx.GetContext(ctx, &total, `
+			SELECT COUNT(*)
+			FROM audit_logs
+			WHERE ($1 = '' OR action = $1)
+			  AND ($2 = '' OR action ILIKE '%' || $2 || '%' OR target_id ILIKE '%' || $2 || '%' OR ip_address ILIKE '%' || $2 || '%')
+		`, filter.Action, filter.Search); err != nil {
+			return err
+		}
 		return tx.SelectContext(ctx, &logs, `
 			SELECT id, actor_user_id, action, target_type, target_id, ip_address, metadata, created_at
 			FROM audit_logs
+			WHERE ($1 = '' OR action = $1)
+			  AND ($2 = '' OR action ILIKE '%' || $2 || '%' OR target_id ILIKE '%' || $2 || '%' OR ip_address ILIKE '%' || $2 || '%')
 			ORDER BY created_at DESC
-			LIMIT $1
-		`, limit)
+			LIMIT $3 OFFSET $4
+		`, filter.Action, filter.Search, filter.Limit, offset)
 	})
-	return logs, err
+	if err != nil {
+		return nil, err
+	}
+	if logs == nil {
+		logs = []AuditLog{}
+	}
+	return &AuditLogPage{
+		Logs:  logs,
+		Total: total,
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}, nil
+}
+
+func (r *PostgresRepository) ListActiveSessions(ctx context.Context, adminID int) ([]ActiveSessionDTO, error) {
+	var sessions []ActiveSessionDTO
+	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		return tx.SelectContext(ctx, &sessions, `
+			SELECT s.id, s.user_id, u.username, u.role, s.user_agent, s.ip_address, s.created_at, s.expires_at
+			FROM auth_sessions s
+			JOIN users u ON u.id = s.user_id
+			WHERE s.revoked_at IS NULL AND s.expires_at > NOW()
+			ORDER BY s.created_at DESC
+		`)
+	})
+	if sessions == nil {
+		sessions = []ActiveSessionDTO{}
+	}
+	return sessions, err
+}
+
+func (r *PostgresRepository) RevokeSessionByID(ctx context.Context, adminID int, sessionID string) error {
+	return database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE auth_sessions
+			SET revoked_at = NOW()
+			WHERE id = $1 AND revoked_at IS NULL
+		`, sessionID)
+		if err != nil {
+			return err
+		}
+		if rows, _ := res.RowsAffected(); rows == 0 {
+			return ErrSessionNotFound
+		}
+		return nil
+	})
 }
 
 func (r *PostgresRepository) WriteAuditLog(ctx context.Context, actorID *int, actorRole string, authFlow bool, action, targetType, targetID, ip string, meta map[string]any) error {
