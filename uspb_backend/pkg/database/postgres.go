@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -44,7 +45,13 @@ func ConnectPostgres() (*sqlx.DB, error) {
 		sslmode = "disable"
 	}
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
+	dsn := (&url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, password),
+		Host:     fmt.Sprintf("%s:%s", host, port),
+		Path:     "/" + dbname,
+		RawQuery: "sslmode=" + url.QueryEscape(sslmode),
+	}).String()
 
 	db, err := sqlx.Connect("pgx", dsn)
 	if err != nil {
