@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(
 
 	authGroup.Post("/logout", jwtMW, csrfMW, h.Logout)
 	authGroup.Get("/me", jwtMW, h.Me)
+	authGroup.Patch("/profile", jwtMW, csrfMW, h.UpdateProfile)
 	authGroup.Post("/change-password", jwtMW, csrfMW, h.ChangePassword)
 
 	adminGroup := api.Group("/admin", jwtMW, csrfMW, adminMW)
@@ -114,6 +115,26 @@ func (h *Handler) Me(c *fiber.Ctx) error {
 	}
 	return utils.SuccessResponse(c, fiber.StatusOK, "Authenticated user", fiber.Map{
 		"user": user,
+	})
+}
+
+func (h *Handler) UpdateProfile(c *fiber.Ctx) error {
+	var req UpdateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+	userID, _ := c.Locals("user_id").(int)
+	role, _ := c.Locals("role").(string)
+
+	updated, err := h.service.UpdateProfile(c.UserContext(), userID, role, req, c.IP())
+	if err != nil {
+		if errors.Is(err, ErrValidation) {
+			return utils.ErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		}
+		return utils.ErrorResponse(c, fiber.StatusConflict, "Could not update profile (username may already be taken)")
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Profile updated", fiber.Map{
+		"user": updated,
 	})
 }
 

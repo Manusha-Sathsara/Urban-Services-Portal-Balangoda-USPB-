@@ -193,6 +193,23 @@ func (s *Service) ChangePassword(ctx context.Context, userID int, role string, r
 	return s.repo.WriteAuditLog(ctx, &userID, role, false, "AUTH_PASSWORD_CHANGED", "user", strconv.Itoa(userID), ip, nil)
 }
 
+func (s *Service) UpdateProfile(ctx context.Context, userID int, role string, req UpdateProfileRequest, ip string) (*User, error) {
+	req.Name = strings.TrimSpace(req.Name)
+	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.TrimSpace(req.Email)
+	req.Phone = strings.TrimSpace(req.Phone)
+	if req.Name == "" || req.Username == "" {
+		return nil, fmt.Errorf("%w: full name and username are required", ErrValidation)
+	}
+
+	updated, err := s.repo.UpdateProfile(ctx, userID, req)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.repo.WriteAuditLog(ctx, &userID, role, false, "AUTH_PROFILE_UPDATED", "user", strconv.Itoa(userID), ip, nil)
+	return updated, nil
+}
+
 func (s *Service) ListUsers(ctx context.Context, adminID int) ([]User, error) {
 	return s.repo.ListUsers(ctx, adminID)
 }
@@ -200,6 +217,8 @@ func (s *Service) ListUsers(ctx context.Context, adminID int) ([]User, error) {
 func (s *Service) CreateUser(ctx context.Context, adminID int, req CreateUserRequest, ip string) (*User, error) {
 	req.Name = strings.TrimSpace(req.Name)
 	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.TrimSpace(req.Email)
+	req.Phone = strings.TrimSpace(req.Phone)
 	if req.Name == "" || req.Username == "" {
 		return nil, fmt.Errorf("%w: name and username are required", ErrValidation)
 	}
@@ -224,6 +243,8 @@ func (s *Service) CreateUser(ctx context.Context, adminID int, req CreateUserReq
 	created, err := s.repo.CreateUser(ctx, adminID, User{
 		Name:         req.Name,
 		Username:     req.Username,
+		Email:        req.Email,
+		Phone:        req.Phone,
 		PasswordHash: hash,
 		Role:         req.Role,
 		SchoolID:     req.SchoolID,

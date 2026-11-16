@@ -139,6 +139,21 @@ func (m *memoryAuthRepo) UpdatePassword(_ context.Context, userID int, newHash s
 	return nil
 }
 
+func (m *memoryAuthRepo) UpdateProfile(_ context.Context, userID int, req UpdateProfileRequest) (*User, error) {
+	u, ok := m.users[userID]
+	if !ok {
+		return nil, ErrUserNotFound
+	}
+	delete(m.byUsername, u.Username)
+	u.Name = req.Name
+	u.Username = req.Username
+	u.Email = req.Email
+	u.Phone = req.Phone
+	m.byUsername[u.Username] = u.ID
+	cp := *u
+	return &cp, nil
+}
+
 func (m *memoryAuthRepo) ListUsers(_ context.Context, _ int) ([]User, error) {
 	var out []User
 	for _, u := range m.users {

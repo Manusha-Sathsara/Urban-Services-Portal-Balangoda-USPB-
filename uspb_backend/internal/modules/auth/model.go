@@ -28,6 +28,8 @@ type User struct {
 	ID                  int        `db:"id" json:"id"`
 	Name                string     `db:"name" json:"name"`
 	Username            string     `db:"username" json:"username"`
+	Email               string     `db:"email" json:"email"`
+	Phone               string     `db:"phone" json:"phone"`
 	PasswordHash        string     `db:"password_hash" json:"-"`
 	Role                string     `db:"role" json:"role"`
 	SchoolID            *int       `db:"school_id" json:"school_id"`
@@ -76,6 +78,8 @@ type ChangePasswordRequest struct {
 type CreateUserRequest struct {
 	Name              string `json:"name"`
 	Username          string `json:"username"`
+	Email             string `json:"email"`
+	Phone             string `json:"phone"`
 	TemporaryPassword string `json:"temporary_password"`
 	Role              string `json:"role"`
 	SchoolID          *int   `json:"school_id"`
@@ -83,9 +87,19 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	Name     *string `json:"name"`
+	Username *string `json:"username"`
+	Email    *string `json:"email"`
+	Phone    *string `json:"phone"`
 	Role     *string `json:"role"`
 	SchoolID *int    `json:"school_id"`
 	IsActive *bool   `json:"is_active"`
+}
+
+type UpdateProfileRequest struct {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
 }
 
 type ResetPasswordRequest struct {

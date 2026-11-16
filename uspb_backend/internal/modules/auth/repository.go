@@ -32,6 +32,7 @@ type Repository interface {
 	IsSessionActive(sessionID string, userID int) (bool, error)
 
 	UpdatePassword(ctx context.Context, userID int, newHash string) error
+	UpdateProfile(ctx context.Context, userID int, req UpdateProfileRequest) (*User, error)
 
 	ListUsers(ctx context.Context, adminID int) ([]User, error)
 	CreateUser(ctx context.Context, adminID int, u User) (*User, error)
@@ -62,7 +63,7 @@ func (r *PostgresRepository) FindUserByUsername(ctx context.Context, username st
 	var u User
 	err := database.WithRLS(ctx, r.db, database.RLSContext{AuthFlow: true}, func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &u, `
-			SELECT id, name, username, password_hash, role, school_id, is_active,
+			SELECT id, name, username, email, phone, password_hash, role, school_id, is_active,
 			       must_change_password, failed_login_attempts, locked_until, created_at, updated_at
 			FROM users
 			WHERE username = $1
@@ -81,7 +82,7 @@ func (r *PostgresRepository) FindUserByID(ctx context.Context, userID int, role 
 	var u User
 	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: userID, Role: role}, func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &u, `
-			SELECT id, name, username, password_hash, role, school_id, is_active,
+			SELECT id, name, username, email, phone, password_hash, role, school_id, is_active,
 			       must_change_password, failed_login_attempts, locked_until, created_at, updated_at
 			FROM users
 			WHERE id = $1
@@ -140,7 +141,7 @@ func (r *PostgresRepository) FindSessionByTokenHash(ctx context.Context, tokenHa
 			return err
 		}
 		return tx.GetContext(ctx, &u, `
-			SELECT id, name, username, password_hash, role, school_id, is_active,
+			SELECT id, name, username, email, phone, password_hash, role, school_id, is_active,
 			       must_change_password, failed_login_attempts, locked_until, created_at, updated_at
 			FROM users
 			WHERE id = $1
@@ -227,11 +228,31 @@ func (r *PostgresRepository) UpdatePassword(ctx context.Context, userID int, new
 	})
 }
 
+func (r *PostgresRepository) UpdateProfile(ctx context.Context, userID int, req UpdateProfileRequest) (*User, error) {
+	var updated User
+	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: userID}, func(tx *sqlx.Tx) error {
+		return tx.GetContext(ctx, &updated, `
+			UPDATE users
+			SET name = $1,
+			    username = $2,
+			    email = $3,
+			    phone = $4,
+			    updated_at = NOW()
+			WHERE id = $5
+			RETURNING id, name, username, email, phone, role, school_id, is_active, must_change_password, created_at, updated_at
+		`, req.Name, req.Username, req.Email, req.Phone, userID)
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	return &updated, err
+}
+
 func (r *PostgresRepository) ListUsers(ctx context.Context, adminID int) ([]User, error) {
 	var users []User
 	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
 		return tx.SelectContext(ctx, &users, `
-			SELECT id, name, username, role, school_id, is_active,
+			SELECT id, name, username, email, phone, role, school_id, is_active,
 			       must_change_password, created_at, updated_at
 			FROM users
 			ORDER BY id ASC
@@ -244,10 +265,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, adminID int, u User
 	var created User
 	err := database.WithRLS(ctx, r.db, database.RLSContext{UserID: adminID, Role: RoleAdmin}, func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &created, `
-			INSERT INTO users (name, username, password_hash, role, school_id, is_active, must_change_password)
-			VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
-			RETURNING id, name, username, role, school_id, is_active, must_change_password, created_at, updated_at
-		`, u.Name, u.Username, u.PasswordHash, u.Role, u.SchoolID)
+			INSERT INTO users (name, username, email, phone, password_hash, role, school_id, is_active, must_change_password)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE)
+			RETURNING id, name, username, email, phone, role, school_id, is_active, must_change_password, created_at, updated_at
+		`, u.Name, u.Username, u.Email, u.Phone, u.PasswordHash, u.Role, u.SchoolID)
 	})
 	return &created, err
 }
@@ -258,15 +279,18 @@ func (r *PostgresRepository) UpdateUser(ctx context.Context, adminID int, target
 		return tx.GetContext(ctx, &updated, `
 			UPDATE users
 			SET name = COALESCE($1, name),
-			    role = COALESCE($2, role),
-			    school_id = CASE WHEN $2 = 'TEACHER' THEN COALESCE($3, school_id)
-			                     WHEN $2 IS NOT NULL THEN NULL
-			                     ELSE COALESCE($3, school_id) END,
-			    is_active = COALESCE($4, is_active),
+			    username = COALESCE($2, username),
+			    email = COALESCE($3, email),
+			    phone = COALESCE($4, phone),
+			    role = COALESCE($5, role),
+			    school_id = CASE WHEN $5 = 'TEACHER' THEN COALESCE($6, school_id)
+			                     WHEN $5 IS NOT NULL THEN NULL
+			                     ELSE COALESCE($6, school_id) END,
+			    is_active = COALESCE($7, is_active),
 			    updated_at = NOW()
-			WHERE id = $5
-			RETURNING id, name, username, role, school_id, is_active, must_change_password, created_at, updated_at
-		`, req.Name, req.Role, req.SchoolID, req.IsActive, targetID)
+			WHERE id = $8
+			RETURNING id, name, username, email, phone, role, school_id, is_active, must_change_password, created_at, updated_at
+		`, req.Name, req.Username, req.Email, req.Phone, req.Role, req.SchoolID, req.IsActive, targetID)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
