@@ -46,33 +46,12 @@ export function LandingNavbar() {
           </Link>
 
           {!isLoading && user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                href={dashboardHref}
-                className="btn-hover-fx bg-[#fbbf24] text-[#4a1a00] px-5 py-[10px] rounded font-sans font-bold hover:bg-[#f59e0b] shadow-sm hover:shadow"
-              >
-                My Dashboard
-              </Link>
-              <Link
-                href={dashboardHref}
-                className="btn-hover-fx w-8 h-8 rounded-full bg-[#fbbf24] text-[#5a0000] grid place-items-center hover:bg-[#f59e0b] shadow-sm hover:shadow"
-                title={`${user.name} (${user.role})`}
-                aria-label="Go to My Dashboard"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </Link>
-            </div>
+            <Link
+              href={dashboardHref}
+              className="btn-hover-fx bg-[#fbbf24] text-[#4a1a00] px-5 py-[10px] rounded font-sans font-bold hover:bg-[#f59e0b] shadow-sm hover:shadow"
+            >
+              My Dashboard
+            </Link>
           ) : (
             <Link
               href="/login"

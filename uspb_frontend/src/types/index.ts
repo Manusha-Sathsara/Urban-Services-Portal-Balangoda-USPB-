@@ -11,6 +11,8 @@ export interface User {
   id: number;
   name: string;
   username: string;
+  email: string;
+  phone: string;
   role: UserRole;
   school_id?: number | null;
   is_active: boolean;
@@ -66,6 +68,8 @@ export interface ActiveSession {
 export interface CreateUserInput {
   name: string;
   username: string;
+  email?: string;
+  phone?: string;
   temporary_password: string;
   role: UserRole;
   school_id?: number | null;
@@ -73,6 +77,9 @@ export interface CreateUserInput {
 
 export interface UpdateUserInput {
   name?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
   role?: UserRole;
   school_id?: number | null;
   is_active?: boolean;
