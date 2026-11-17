@@ -10,7 +10,12 @@ export interface BusinessFeeRecord {
   id: string;
   businessName: string;
   ownerName?: string;
+  ownerIdNumber?: string;
   businessType?: string;
+  categorySinhalaName?: string;
+  categoryId?: number;
+  address?: string;
+  contactNumber?: string;
   ward: string;
   feeYear: number;
   feeAmount: number;

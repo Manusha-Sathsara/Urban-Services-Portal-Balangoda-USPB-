@@ -32,6 +32,11 @@ import {
   type BusinessStatus,
   type BusinessType,
 } from "./mockData";
+import {
+  BUSINESS_CATEGORIES,
+  getCategoryByName,
+  formatLKR,
+} from "@/lib/businessCategories";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -45,9 +50,12 @@ interface AddBusinessFormData {
   businessName: string;
   registrationNumber: string;
   businessType: BusinessType | "";
-  address: string;
+  categorySinhalaName: string;
   ownerName: string;
+  ownerIdNumber: string;
+  address: string;
   contactNumber: string;
+  price: number;
   status: BusinessStatus;
 }
 
@@ -57,7 +65,9 @@ interface FormErrors {
   businessType?: string;
   address?: string;
   ownerName?: string;
+  ownerIdNumber?: string;
   contactNumber?: string;
+  price?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,7 +280,22 @@ function ViewDetailsModal({
           {[
             { label: "Business Name", value: business.businessName },
             { label: "Owner Name", value: business.ownerName },
-            { label: "Business Type", value: business.businessType },
+            { label: "Owner ID (NIC)", value: business.ownerIdNumber || "—" },
+            {
+              label: "Business Category",
+              value: business.categorySinhalaName
+                ? `${business.businessType} (${business.categorySinhalaName})`
+                : business.businessType,
+            },
+            {
+              label: "Annual Fee",
+              value:
+                business.price !== undefined
+                  ? business.price > 0
+                    ? formatLKR(business.price)
+                    : "Variable / Assessed"
+                  : "—",
+            },
             { label: "Address", value: business.address },
             { label: "Contact Number", value: business.contactNumber },
             { label: "Registered On", value: formatDate(business.createdAt) },
@@ -300,6 +325,50 @@ function ViewDetailsModal({
   );
 }
 
+// ── Shared field wrapper ────────────────────────────────────────────────
+function Field({
+  id,
+  label,
+  required,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor={id}
+        className="text-[12px] font-semibold text-[#5a0000] flex items-center gap-1"
+      >
+        {label}
+        {required && (
+          <span className="text-[#800000]" aria-hidden="true">
+            *
+          </span>
+        )}
+      </label>
+      {children}
+      {error && (
+        <p className="text-[11px] text-red-600" role="alert" id={`${id}-error`}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const inputCls = (err?: string) =>
+  `w-full rounded border ${
+    err
+      ? "border-red-400 focus:ring-red-300"
+      : "border-[#dcc6c4] focus:ring-[#800000]/30"
+  } bg-white px-3 py-2 text-sm text-[#4a4a4a] shadow-xs focus:outline-none focus:ring-2 transition placeholder:text-[#c0a8a6]`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-component: Add Business Drawer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,9 +376,12 @@ const EMPTY_FORM: AddBusinessFormData = {
   businessName: "",
   registrationNumber: "",
   businessType: "",
-  address: "",
+  categorySinhalaName: "",
   ownerName: "",
+  ownerIdNumber: "",
+  address: "",
   contactNumber: "",
+  price: 0,
   status: "active",
 };
 
@@ -330,14 +402,9 @@ function AddBusinessDrawer({
   const [submitted, setSubmitted] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset form when drawer opens
+  // Focus input on open
   useEffect(() => {
     if (open) {
-      setForm(EMPTY_FORM);
-      setErrors({});
-      setSubmitted(false);
-      setSubmitting(false);
-      // Focus first input after animation settles
       setTimeout(() => firstInputRef.current?.focus(), 150);
     }
   }, [open]);
@@ -368,7 +435,7 @@ function AddBusinessDrawer({
         "This registration number is already in use.";
 
     if (!form.businessType)
-      errs.businessType = "Please select a business type.";
+      errs.businessType = "Please select a business category.";
 
     if (!form.address.trim())
       errs.address = "Business address is required.";
@@ -379,6 +446,9 @@ function AddBusinessDrawer({
       errs.ownerName = "Owner name is required.";
     else if (form.ownerName.trim().length > 100)
       errs.ownerName = "Owner name must not exceed 100 characters.";
+
+    if (!form.ownerIdNumber.trim())
+      errs.ownerIdNumber = "Owner ID (NIC) number is required.";
 
     if (!form.contactNumber.trim())
       errs.contactNumber = "Contact number is required.";
@@ -395,7 +465,17 @@ function AddBusinessDrawer({
     >
   ) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === "businessType") {
+      const cat = getCategoryByName(value) || BUSINESS_CATEGORIES.find((c) => c.englishName === value);
+      setForm((prev) => ({
+        ...prev,
+        businessType: value as BusinessType,
+        categorySinhalaName: cat?.sinhalaName || "",
+        price: cat?.price || 0,
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
     // Clear individual field error on change
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
@@ -424,7 +504,10 @@ function AddBusinessDrawer({
         ),
       businessName: form.businessName.trim(),
       ownerName: form.ownerName.trim(),
+      ownerIdNumber: form.ownerIdNumber.trim(),
       businessType: form.businessType as BusinessType,
+      categorySinhalaName: form.categorySinhalaName,
+      price: form.price,
       address: form.address.trim(),
       contactNumber: form.contactNumber.trim(),
       status: form.status,
@@ -434,50 +517,6 @@ function AddBusinessDrawer({
     setSubmitting(false);
     onSuccess(newBusiness);
   }
-
-  // ── Shared field wrapper ────────────────────────────────────────────────
-  function Field({
-    id,
-    label,
-    required,
-    error,
-    children,
-  }: {
-    id: string;
-    label: string;
-    required?: boolean;
-    error?: string;
-    children: React.ReactNode;
-  }) {
-    return (
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor={id}
-          className="text-[12px] font-semibold text-[#5a0000] flex items-center gap-1"
-        >
-          {label}
-          {required && (
-            <span className="text-[#800000]" aria-hidden="true">
-              *
-            </span>
-          )}
-        </label>
-        {children}
-        {error && (
-          <p className="text-[11px] text-red-600" role="alert" id={`${id}-error`}>
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  const inputCls = (err?: string) =>
-    `w-full rounded border ${
-      err
-        ? "border-red-400 focus:ring-red-300"
-        : "border-[#dcc6c4] focus:ring-[#800000]/30"
-    } bg-white px-3 py-2 text-sm text-[#4a4a4a] shadow-xs focus:outline-none focus:ring-2 transition placeholder:text-[#c0a8a6]`;
 
   return (
     <>
@@ -584,7 +623,7 @@ function AddBusinessDrawer({
 
               <Field
                 id="businessType"
-                label="Business Type"
+                label="Business Category (35 Standard Categories)"
                 required
                 error={submitted ? errors.businessType : undefined}
               >
@@ -600,15 +639,29 @@ function AddBusinessDrawer({
                   }
                 >
                   <option value="" disabled>
-                    Select a business type…
+                    -- Select Category / ප්‍රවර්ගය තෝරන්න --
                   </option>
-                  {BUSINESS_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {BUSINESS_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.englishName}>
+                      {cat.id}. {cat.englishName} ({cat.sinhalaName}) — {cat.price !== null ? `LKR ${cat.formattedPrice}` : "Assessed Rate (—)"}
                     </option>
                   ))}
                 </select>
               </Field>
+
+              {form.businessType && (
+                <div className="rounded border border-[#dcc6c4] bg-[#fcf8f7] p-2.5 text-xs text-[#5a0000] flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold block">{form.businessType}</span>
+                    {form.categorySinhalaName && (
+                      <span className="text-[#8a5a58] text-[11px] block">{form.categorySinhalaName}</span>
+                    )}
+                  </div>
+                  <span className="font-mono font-bold text-sm text-[#800000]">
+                    {form.price > 0 ? formatLKR(form.price) : "Assessed Rate"}
+                  </span>
+                </div>
+              )}
 
               <Field
                 id="address"
@@ -660,6 +713,33 @@ function AddBusinessDrawer({
                     submitted && errors.ownerName ? "ownerName-error" : undefined
                   }
                 />
+              </Field>
+
+              <Field
+                id="ownerIdNumber"
+                label="Owner ID Number (NIC)"
+                required
+                error={submitted ? errors.ownerIdNumber : undefined}
+              >
+                <input
+                  id="ownerIdNumber"
+                  name="ownerIdNumber"
+                  type="text"
+                  value={form.ownerIdNumber}
+                  onChange={handleChange}
+                  maxLength={15}
+                  placeholder="e.g. 198512345678 or 851234567V"
+                  className={inputCls(submitted ? errors.ownerIdNumber : undefined)}
+                  aria-required="true"
+                  aria-describedby={
+                    submitted && errors.ownerIdNumber
+                      ? "ownerIdNumber-error"
+                      : "ownerIdNumber-hint"
+                  }
+                />
+                <p id="ownerIdNumber-hint" className="text-[10.5px] text-[#8a5a58]">
+                  Sri Lankan National Identity Card (NIC) number.
+                </p>
               </Field>
 
               <Field
@@ -831,12 +911,22 @@ export default function BusinessManagementPage() {
     [filtered, page]
   );
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, typeFilter]);
-
   // ── Handlers ───────────────────────────────────────────────────────────
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (val: "all" | BusinessStatus) => {
+    setStatusFilter(val);
+    setPage(1);
+  };
+
+  const handleTypeFilterChange = (val: string) => {
+    setTypeFilter(val);
+    setPage(1);
+  };
+
   const handleResetFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
@@ -940,7 +1030,7 @@ export default function BusinessManagementPage() {
                 id="business-search"
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search by business name, owner name, or registration number..."
                 className="w-full rounded border border-[#dcc6c4] bg-white pl-9 pr-4 py-2 text-sm text-[#4a4a4a] placeholder:text-[#c0a8a6] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30"
                 aria-label="Search businesses"
@@ -948,7 +1038,7 @@ export default function BusinessManagementPage() {
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => handleSearchChange("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8a5a58] hover:text-[#5a0000] text-xs p-0.5"
                   aria-label="Clear search"
                 >
@@ -969,7 +1059,7 @@ export default function BusinessManagementPage() {
             <select
               id="status-filter"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "all" | BusinessStatus)}
+              onChange={(e) => handleStatusFilterChange(e.target.value as "all" | BusinessStatus)}
               className="w-full rounded border border-[#dcc6c4] bg-white px-3 py-2 text-sm text-[#5a0000] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30 cursor-pointer"
               aria-label="Filter by status"
             >
@@ -990,7 +1080,7 @@ export default function BusinessManagementPage() {
             <select
               id="type-filter"
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => handleTypeFilterChange(e.target.value)}
               className="w-full rounded border border-[#dcc6c4] bg-white px-3 py-2 text-sm text-[#5a0000] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#800000]/30 cursor-pointer"
               aria-label="Filter by business type"
             >
@@ -1099,7 +1189,12 @@ export default function BusinessManagementPage() {
 
                     {/* Owner Name */}
                     <td className="px-5 py-3 text-[13px] whitespace-nowrap">
-                      {business.ownerName}
+                      <span>{business.ownerName}</span>
+                      {business.ownerIdNumber && (
+                        <span className="block font-mono text-[10.5px] text-[#8a5a58]">
+                          NIC: {business.ownerIdNumber}
+                        </span>
+                      )}
                     </td>
 
                     {/* Business Type */}
@@ -1171,12 +1266,14 @@ export default function BusinessManagementPage() {
       {/* ──────────────────────────────────────────────────────────────────── */}
       {/* E. Add Business Drawer                                               */}
       {/* ──────────────────────────────────────────────────────────────────── */}
-      <AddBusinessDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSuccess={handleBusinessAdded}
-        existingRegNumbers={existingRegNumbers}
-      />
+      {drawerOpen && (
+        <AddBusinessDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSuccess={handleBusinessAdded}
+          existingRegNumbers={existingRegNumbers}
+        />
+      )}
 
       {/* View Details Modal */}
       {viewTarget && (

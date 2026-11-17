@@ -26,6 +26,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { PaymentStatusBadge } from "@/components/shared/PaymentStatusBadge";
 import { BusinessStatusBadge } from "@/components/shared/BusinessStatusBadge";
 import { CollectionSummary } from "@/components/shared/CollectionSummary";
+import { AnnualPaymentReportModal } from "@/components/garbage-fees/AnnualPaymentReportModal";
 
 import {
   MOCK_BUSINESSES,
@@ -49,7 +50,11 @@ export interface AnnualRecordItem {
   registrationNumber: string;
   businessName: string;
   ownerName: string;
+  ownerIdNumber?: string;
+  address: string;
+  contactNumber: string;
   businessType: string;
+  categorySinhalaName?: string;
   feeYear: number;
   amount: number;
   paymentStatus: "paid" | "unpaid";
@@ -115,7 +120,11 @@ function buildAnnualRecords(
         registrationNumber: b.registrationNumber,
         businessName: b.businessName,
         ownerName: b.ownerName,
+        ownerIdNumber: b.ownerIdNumber,
+        address: b.address,
+        contactNumber: b.contactNumber,
         businessType: b.businessType,
+        categorySinhalaName: b.categorySinhalaName,
         feeYear: selectedYear,
         amount: payment.amount,
         paymentStatus: payment.status,
@@ -132,7 +141,11 @@ function buildAnnualRecords(
       registrationNumber: b.registrationNumber,
       businessName: b.businessName,
       ownerName: b.ownerName,
+      ownerIdNumber: b.ownerIdNumber,
+      address: b.address,
+      contactNumber: b.contactNumber,
       businessType: b.businessType,
+      categorySinhalaName: b.categorySinhalaName,
       feeYear: selectedYear,
       amount: getEstablishedFee(b.id),
       paymentStatus: "unpaid",
@@ -314,8 +327,34 @@ function ViewAnnualRecordModal({
           </div>
 
           <div className="grid grid-cols-[160px_1fr] gap-2 text-sm">
+            <span className="text-[#8a5a58] font-medium shrink-0">Owner ID (NIC)</span>
+            <span className="font-mono text-[#5a0000]">{record.ownerIdNumber || "—"}</span>
+          </div>
+
+          <div className="grid grid-cols-[160px_1fr] gap-2 text-sm">
+            <span className="text-[#8a5a58] font-medium shrink-0">Business Address</span>
+            <span>{record.address || "—"}</span>
+          </div>
+
+          <div className="grid grid-cols-[160px_1fr] gap-2 text-sm">
+            <span className="text-[#8a5a58] font-medium shrink-0">Contact Number</span>
+            <span className="font-mono">
+              {record.contactNumber ? (
+                <a href={`tel:${record.contactNumber}`} className="text-[#5a0000] hover:underline">
+                  {record.contactNumber}
+                </a>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-[160px_1fr] gap-2 text-sm">
             <span className="text-[#8a5a58] font-medium shrink-0">Business Type</span>
-            <span>{record.businessType}</span>
+            <span>
+              {record.businessType}
+              {record.categorySinhalaName && ` (${record.categorySinhalaName})`}
+            </span>
           </div>
 
           <div className="grid grid-cols-[160px_1fr] gap-2 text-sm items-center">
@@ -388,6 +427,7 @@ export default function AnnualPaymentRecordsPage() {
   const [businessStatusFilter, setBusinessStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [page, setPage] = useState(1);
   const [selectedRecord, setSelectedRecord] = useState<AnnualRecordItem | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // ── Build all eligible annual records for selected year ───────────────────
   const annualRecords = useMemo(() => {
@@ -504,27 +544,41 @@ export default function AnnualPaymentRecordsPage() {
           </p>
         </div>
 
-        {/* Year Selector Dropdown */}
-        <div className="flex items-center gap-2.5 bg-white px-3.5 py-1.5 rounded-lg border border-[#dcc6c4] shadow-xs">
-          <label
-            htmlFor="annual-year-select"
-            className="text-[11px] font-bold uppercase tracking-wider text-[#8a5a58] whitespace-nowrap"
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Year Selector Dropdown */}
+          <div className="flex items-center gap-2.5 bg-white px-3.5 py-1.5 rounded-lg border border-[#dcc6c4] shadow-xs">
+            <label
+              htmlFor="annual-year-select"
+              className="text-[11px] font-bold uppercase tracking-wider text-[#8a5a58] whitespace-nowrap"
+            >
+              Select Year
+            </label>
+            <select
+              id="annual-year-select"
+              value={selectedYear}
+              onChange={(e) => handleYearChange(Number(e.target.value))}
+              className="bg-transparent text-sm font-bold text-[#5a0000] focus:outline-none cursor-pointer pr-1"
+              aria-label="Select annual records year"
+            >
+              {AVAILABLE_PAYMENT_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  FY {y}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Export PDF Report Button */}
+          <button
+            type="button"
+            id="export-annual-report-pdf-btn"
+            onClick={() => setIsReportModalOpen(true)}
+            className="btn-hover-fx inline-flex items-center gap-1.5 rounded-lg bg-[#800000] px-4 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-[#5a0000] transition-colors cursor-pointer"
+            aria-label="Export Annual Payment Report as PDF"
           >
-            Select Year
-          </label>
-          <select
-            id="annual-year-select"
-            value={selectedYear}
-            onChange={(e) => handleYearChange(Number(e.target.value))}
-            className="bg-transparent text-sm font-bold text-[#5a0000] focus:outline-none cursor-pointer pr-1"
-            aria-label="Select annual records year"
-          >
-            {AVAILABLE_PAYMENT_YEARS.map((y) => (
-              <option key={y} value={y}>
-                FY {y}
-              </option>
-            ))}
-          </select>
+            <span aria-hidden="true" className="text-base leading-none">📄</span>
+            <span>Export PDF Report</span>
+          </button>
         </div>
       </div>
 
@@ -796,7 +850,12 @@ export default function AnnualPaymentRecordsPage() {
 
                     {/* 3. Owner Name */}
                     <td className="px-5 py-3 text-[13px] whitespace-nowrap">
-                      {record.ownerName}
+                      <span className="font-medium text-[#222222] block">{record.ownerName}</span>
+                      {record.ownerIdNumber && (
+                        <span className="font-mono text-[10.5px] text-[#8a5a58] block">
+                          NIC: {record.ownerIdNumber}
+                        </span>
+                      )}
                     </td>
 
                     {/* 4. Business Type */}
@@ -871,6 +930,18 @@ export default function AnnualPaymentRecordsPage() {
         <ViewAnnualRecordModal
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
+        />
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────── */}
+      {/* G. Annual Payment Report Modal (PDF Export)                          */}
+      {/* ──────────────────────────────────────────────────────────────────── */}
+      {isReportModalOpen && (
+        <AnnualPaymentReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          year={selectedYear}
+          records={annualRecords}
         />
       )}
     </div>

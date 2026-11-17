@@ -15,6 +15,42 @@
 // Business Types / Categories
 // ---------------------------------------------------------------------------
 export const BUSINESS_TYPES = [
+  "Guest Houses",
+  "Hotels",
+  "Bakeries",
+  "Clothing Stores",
+  "Rice Shops, Restaurants, Tea & Coffee Shops",
+  "Dining Establishments",
+  "Supermarkets",
+  "Retail Shops",
+  "Salons & Beauty Parlours",
+  "Rice Mills",
+  "Private Tuition Classes",
+  "Wholesale Businesses",
+  "Hardware Stores",
+  "General / Mixed Trading",
+  "Farm Shops",
+  "Footwear Stores",
+  "Tyre Service Centres",
+  "Printing Services",
+  "Liquor Stores",
+  "Vegetable & Fruit Shops",
+  "Animal Feed Stores",
+  "Fancy Goods Stores",
+  "Betel Leaf Trading",
+  "Lubricant Sales",
+  "Private Hospitals & Laboratories",
+  "General & Life Insurance Businesses",
+  "Gem Shops",
+  "Pharmacies",
+  "Stationery Shops",
+  "Function Halls",
+  "Vehicle Repair Services",
+  "Vehicle Spare Parts Stores",
+  "Photography Studios",
+  "Cattle Slaughterhouses",
+  "Goat Meat & Beef Shops",
+  // Legacy categories for backwards compatibility
   "General Trade / Retail",
   "Food & Beverage",
   "Pharmacy / Medical",
@@ -30,7 +66,7 @@ export const BUSINESS_TYPES = [
   "Other",
 ] as const;
 
-export type BusinessType = (typeof BUSINESS_TYPES)[number];
+export type BusinessType = (typeof BUSINESS_TYPES)[number] | string;
 
 // ---------------------------------------------------------------------------
 // Business Status
@@ -49,8 +85,18 @@ export interface Business {
   businessName: string;
   /** Full legal name of the owner */
   ownerName: string;
+  /** National Identity Card (NIC) number of the owner */
+  ownerIdNumber?: string;
   /** Category of business activity */
   businessType: BusinessType;
+  /** Sinhala category description */
+  categorySinhalaName?: string;
+  /** Category ID */
+  categoryId?: number;
+  /** Annual garbage collection fee rate */
+  price?: number;
+  /** Municipal ward */
+  ward?: string;
   /** Physical address */
   address: string;
   /** Primary contact telephone number */
@@ -70,6 +116,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-001",
     businessName: "Balangoda Commercial Hub",
     ownerName: "Sunil K. Perera",
+    ownerIdNumber: "197812345678",
     businessType: "General Trade / Retail",
     address: "No. 12, Main Street, Balangoda, Ratnapura",
     contactNumber: "0712345678",
@@ -81,6 +128,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-002",
     businessName: "K. G. Perera General Store",
     ownerName: "Kamala G. Perera",
+    ownerIdNumber: "198256789012",
     businessType: "General Trade / Retail",
     address: "No. 34, Temple Road, Balangoda, Ratnapura",
     contactNumber: "0778901234",
@@ -92,6 +140,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-003",
     businessName: "Balangoda Bakery & Sweets",
     ownerName: "Priyantha D. Silva",
+    ownerIdNumber: "198590123456",
     businessType: "Bakery / Confectionery",
     address: "No. 7, New Town Road, Balangoda, Ratnapura",
     contactNumber: "0714567890",
@@ -103,6 +152,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-004",
     businessName: "Sunrise Pharmacy (Pvt) Ltd",
     ownerName: "Dr. Nimal R. Fernando",
+    ownerIdNumber: "197523456789",
     businessType: "Pharmacy / Medical",
     address: "No. 56, Hospital Road, Balangoda, Ratnapura",
     contactNumber: "0453456789",
@@ -114,6 +164,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-005",
     businessName: "Ratnapura Road Hardware",
     ownerName: "Lasantha P. Gunasekara",
+    ownerIdNumber: "198934567890",
     businessType: "Hardware / Building Materials",
     address: "No. 89, Ratnapura Road, Balangoda, Ratnapura",
     contactNumber: "0459012345",
@@ -125,6 +176,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-006",
     businessName: "Lanka Textile Emporium",
     ownerName: "Sandya A. Wijesinghe",
+    ownerIdNumber: "199145678901",
     businessType: "Textile / Clothing",
     address: "No. 23, Market Street, Balangoda, Ratnapura",
     contactNumber: "0769876543",
@@ -136,6 +188,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-007",
     businessName: "City Supermarket (Pvt) Ltd",
     ownerName: "Ruwan C. Jayawardena",
+    ownerIdNumber: "198356789012",
     businessType: "Supermarket / Grocery",
     address: "No. 45, New Road, Balangoda, Ratnapura",
     contactNumber: "0712233445",
@@ -147,6 +200,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-008",
     businessName: "Green Valley Restaurant",
     ownerName: "Malkanthi S. Ranasinghe",
+    ownerIdNumber: "198767890123",
     businessType: "Food & Beverage",
     address: "No. 11, Colombo Road, Balangoda, Ratnapura",
     contactNumber: "0455678901",
@@ -158,6 +212,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2024-009",
     businessName: "Balangoda IT Solutions",
     ownerName: "Chathura N. Dissanayake",
+    ownerIdNumber: "199478901234",
     businessType: "Electronic / IT Services",
     address: "No. 3, Industrial Zone, Balangoda, Ratnapura",
     contactNumber: "0774433221",
@@ -169,6 +224,7 @@ export const MOCK_BUSINESSES: Business[] = [
     registrationNumber: "BAL-BUS-2025-010",
     businessName: "Saman Guest Inn",
     ownerName: "Saman P. Kumarasinghe",
+    ownerIdNumber: "198089012345",
     businessType: "Hotel / Guest House",
     address: "No. 67, Tourist Lane, Balangoda, Ratnapura",
     contactNumber: "0459988776",
