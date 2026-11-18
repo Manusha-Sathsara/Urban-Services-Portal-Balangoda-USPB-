@@ -42,20 +42,26 @@ export default function DashboardShell({
     }
   }, [isLoading, user, pathname, router]);
 
-  if (isLoading || !user || user.must_change_password || !isRolePermittedForPath(user.role, pathname)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fcf8f7] text-sm font-medium text-[#5a0000]">
-        Verifying session...
-      </div>
-    );
-  }
+  const permitted = Boolean(
+    !isLoading &&
+      user &&
+      !user.must_change_password &&
+      isRolePermittedForPath(user.role, pathname)
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-[#fcf8f7] text-[#4a4a4a]">
       <Header />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          {!permitted && (
+            <div className="flex min-h-[50vh] items-center justify-center text-sm font-medium text-[#5a0000]">
+              Verifying session...
+            </div>
+          )}
+          <div className={permitted ? "block" : "hidden"}>{children}</div>
+        </main>
       </div>
     </div>
   );
