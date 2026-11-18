@@ -4,14 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { ActiveSession, ApiResponse } from "@/types";
+import { ActiveSession, ApiResponse, User } from "@/types";
 
 export default function AdminSettingsPage() {
   const { user, refreshUser } = useAuth();
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
+
+  // Profile state
+  const [name, setName] = useState(user?.name || "");
+  const [username, setUsername] = useState(user?.username || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+
+  // Password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const loadSessions = useCallback(async () => {
@@ -19,7 +28,7 @@ export default function AdminSettingsPage() {
       const res = await api.get<ApiResponse<ActiveSession[]>>("/admin/sessions");
       setSessions(res.data.data || []);
     } catch {
-      // handled silently on initial load
+      // ignore initial error
     }
   }, []);
 
@@ -32,6 +41,24 @@ export default function AdminSettingsPage() {
       active = false;
     };
   }, []);
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+    try {
+      await api.patch<ApiResponse<{ user: User }>>("/auth/profile", {
+        name: name.trim(),
+        username: username.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      });
+      await refreshUser();
+      setFeedback({ type: "ok", text: "Profile details updated." });
+    } catch (err) {
+      const msg = axios.isAxiosError<ApiResponse>(err) ? err.response?.data?.error : undefined;
+      setFeedback({ type: "err", text: msg || "Failed to update profile." });
+    }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +105,7 @@ export default function AdminSettingsPage() {
           Settings &amp; Security
         </h2>
         <p className="text-[13px] text-[#8a5a58] mt-1">
-          Manage your administrator password and monitor or terminate active staff sessions.
+          Update your profile details, change password, and manage active staff sessions.
         </p>
       </div>
 
@@ -95,13 +122,69 @@ export default function AdminSettingsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Profile Details */}
+        <form
+          onSubmit={handleProfileSubmit}
+          className="rounded-xl border border-[#f0e6e5] bg-white p-6 shadow-[0_2px_10px_rgba(90,0,0,0.06)] space-y-4"
+        >
+          <h3 className="font-serif text-base font-bold text-[#5a0000]">
+            Account Profile
+          </h3>
+          <div>
+            <label className="block text-xs font-semibold text-[#5a0000]">Full Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#5a0000]">Username</label>
+            <input
+              type="text"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#5a0000]">Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@balangoda.gov.lk"
+              className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[#5a0000]">Phone Number</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="07X-XXXXXXX"
+              className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
+          >
+            Save Profile
+          </button>
+        </form>
+
         {/* Change Password */}
         <form
           onSubmit={handlePasswordSubmit}
           className="rounded-xl border border-[#f0e6e5] bg-white p-6 shadow-[0_2px_10px_rgba(90,0,0,0.06)] space-y-4"
         >
           <h3 className="font-serif text-base font-bold text-[#5a0000]">
-            Change Administrator Password
+            Change Password
           </h3>
           <div>
             <label className="block text-xs font-semibold text-[#5a0000]">Current Password</label>
@@ -146,27 +229,6 @@ export default function AdminSettingsPage() {
             Update Password
           </button>
         </form>
-
-        {/* Security Policy Summary */}
-        <div className="rounded-xl border border-[#f0e6e5] bg-white p-6 shadow-[0_2px_10px_rgba(90,0,0,0.06)] space-y-3">
-          <h3 className="font-serif text-base font-bold text-[#5a0000]">
-            Active Security Controls
-          </h3>
-          <ul className="space-y-2 text-xs text-[#5a413d]">
-            <li>
-              <strong className="text-[#5a0000]">Signed-in Account:</strong> {user?.name} ({user?.username})
-            </li>
-            <li>
-              <strong className="text-[#5a0000]">Session Storage:</strong> HttpOnly + SameSite=Lax cookies with CSRF double-submit protection
-            </li>
-            <li>
-              <strong className="text-[#5a0000]">Brute-Force Protection:</strong> 5 failed attempts trigger temporary account lockout + IP rate limiting
-            </li>
-            <li>
-              <strong className="text-[#5a0000]">Database Isolation:</strong> PostgreSQL Row-Level Security (RLS) enforced via least-privilege role
-            </li>
-          </ul>
-        </div>
       </div>
 
       {/* Active Sessions */}

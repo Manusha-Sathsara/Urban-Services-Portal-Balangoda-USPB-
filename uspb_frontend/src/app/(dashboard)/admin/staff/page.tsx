@@ -25,6 +25,8 @@ export default function AdminStaffPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [newTempPass, setNewTempPass] = useState("");
   const [newRole, setNewRole] = useState<UserRole>("FEE_OFFICER");
   const [newSchoolId, setNewSchoolId] = useState("");
@@ -69,10 +71,10 @@ export default function AdminStaffPage() {
     };
   }, []);
 
-  const schoolNameById = (id?: number | null) => {
-    if (!id) return "—";
-    const found = schools.find((s) => s.id === id);
-    return found ? `${found.name} (${found.code})` : `School #${id}`;
+  const schoolBadgeForTeacher = (u: User) => {
+    if (u.role !== "TEACHER" || !u.school_id) return null;
+    const found = schools.find((s) => s.id === u.school_id);
+    return found ? `${found.name} (${found.code})` : `School #${u.school_id}`;
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -82,6 +84,8 @@ export default function AdminStaffPage() {
     const payload: CreateUserInput = {
       name: newName.trim(),
       username: newUsername.trim(),
+      email: newEmail.trim(),
+      phone: newPhone.trim(),
       temporary_password: newTempPass,
       role: newRole,
       school_id: newRole === "TEACHER" && newSchoolId ? Number(newSchoolId) : null,
@@ -93,6 +97,8 @@ export default function AdminStaffPage() {
       setShowCreate(false);
       setNewName("");
       setNewUsername("");
+      setNewEmail("");
+      setNewPhone("");
       setNewTempPass("");
       setNewSchoolId("");
       await loadData();
@@ -148,9 +154,11 @@ export default function AdminStaffPage() {
   };
 
   const filteredUsers = users.filter((u) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.username.toLowerCase().includes(search.toLowerCase());
+      u.name.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      (u.email && u.email.toLowerCase().includes(q));
     const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -163,16 +171,18 @@ export default function AdminStaffPage() {
             Staff Management
           </h2>
           <p className="text-[13px] text-[#8a5a58] mt-1">
-            Create municipal &amp; school staff accounts, assign roles/schools, unlock accounts, and reset passwords.
+            Create staff accounts, assign roles, unlock accounts, and reset passwords.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreate((prev) => !prev)}
-          className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#5a0000]"
-        >
-          {showCreate ? "Close Form" : "+ Create Staff Account"}
-        </button>
+        {!showCreate && (
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#5a0000]"
+          >
+            + Create Staff Account
+          </button>
+        )}
       </div>
 
       {feedback && (
@@ -217,6 +227,26 @@ export default function AdminStaffPage() {
               />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-[#5a0000]">Email Address</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="staff@balangoda.gov.lk"
+                className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#5a0000]">Phone Number</label>
+              <input
+                type="tel"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="07X-XXXXXXX"
+                className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm focus:border-[#800000] focus:outline-none"
+              />
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-[#5a0000]">
                 Temporary Password (min 8)
               </label>
@@ -244,10 +274,10 @@ export default function AdminStaffPage() {
               </select>
             </div>
             {newRole === "TEACHER" && (
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-[#5a0000]">
-                    Assigned School
+                    Assigned School (Teachers Only)
                   </label>
                   <Link href="/admin/schools" className="text-[11px] text-[#800000] hover:underline">
                     + Add school in Schools Registry
@@ -347,7 +377,7 @@ export default function AdminStaffPage() {
             </select>
             <input
               type="search"
-              placeholder="Search name or username..."
+              placeholder="Search name, username, or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full sm:w-56 rounded-lg border border-[#dcc6c4] px-3 py-1.5 text-xs focus:border-[#800000] focus:outline-none"
@@ -360,8 +390,8 @@ export default function AdminStaffPage() {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Username</th>
+                <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Assigned School</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -380,52 +410,69 @@ export default function AdminStaffPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#fcf8f7]">
-                    <td className="px-4 py-3 font-medium text-[#1b1c1c]">{u.name}</td>
-                    <td className="px-4 py-3 font-mono text-[#5a413d]">{u.username}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded bg-[#f0e0df] px-2 py-0.5 font-semibold text-[#5a0000]">
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-[#5a413d]">{schoolNameById(u.school_id)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-semibold ${
-                          u.is_active
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-[#800000]"
-                        }`}
-                      >
-                        {u.is_active ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setResetTarget(u)}
-                        className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
-                      >
-                        Reset PW
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleUnlock(u)}
-                        className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
-                      >
-                        Unlock
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleToggleActive(u)}
-                        className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#800000] hover:bg-red-50"
-                      >
-                        {u.is_active ? "Deactivate" : "Activate"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredUsers.map((u) => {
+                  const teacherSchool = schoolBadgeForTeacher(u);
+                  return (
+                    <tr key={u.id} className="hover:bg-[#fcf8f7]">
+                      <td className="px-4 py-3 font-medium text-[#1b1c1c]">{u.name}</td>
+                      <td className="px-4 py-3 font-mono text-[#5a413d]">{u.username}</td>
+                      <td className="px-4 py-3 text-[#5a413d]">
+                        {u.email || u.phone ? (
+                          <div className="space-y-0.5">
+                            {u.email && <div>{u.email}</div>}
+                            {u.phone && <div className="text-[11px] text-[#8a5a58]">{u.phone}</div>}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="rounded bg-[#f0e0df] px-2 py-0.5 font-semibold text-[#5a0000]">
+                            {u.role}
+                          </span>
+                          {teacherSchool && (
+                            <span className="text-[11px] text-[#5a413d]">{teacherSchool}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-semibold ${
+                            u.is_active
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-[#800000]"
+                          }`}
+                        >
+                          {u.is_active ? "Active" : "Disabled"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setResetTarget(u)}
+                          className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+                        >
+                          Reset PW
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleUnlock(u)}
+                          className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+                        >
+                          Unlock
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleToggleActive(u)}
+                          className="rounded border border-[#dcc6c4] px-2 py-1 text-[11px] font-semibold text-[#800000] hover:bg-red-50"
+                        >
+                          {u.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

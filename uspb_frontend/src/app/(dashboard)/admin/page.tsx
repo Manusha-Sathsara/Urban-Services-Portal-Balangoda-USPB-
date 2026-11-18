@@ -46,7 +46,7 @@ export default function AdminOverviewPage() {
             Admin Overview
           </h2>
           <p className="text-[13px] text-[#8a5a58] mt-1">
-            Balangoda Urban Council — System health, access summary, and cross-module status.
+            Balangoda Urban Council — Portal operations and staff summary.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function AdminOverviewPage() {
           </p>
           <p className="mt-2 text-2xl font-bold text-[#5a0000]">{users.length}</p>
           <p className="mt-1 text-xs text-emerald-700">
-            {users.filter((u) => u.is_active).length} active accounts
+            {users.filter((u) => u.is_active).length} active
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export default function AdminOverviewPage() {
           </p>
           <p className="mt-2 text-2xl font-bold text-[#5a0000]">{schools.length}</p>
           <p className="mt-1 text-xs text-[#8a5a58]">
-            {users.filter((u) => u.role === "TEACHER").length} assigned teachers
+            {users.filter((u) => u.role === "TEACHER").length} teachers assigned
           </p>
         </div>
 
@@ -93,13 +93,13 @@ export default function AdminOverviewPage() {
           </p>
           <p className="mt-2 text-2xl font-bold text-[#5a0000]">{sessions.length}</p>
           <Link href="/admin/settings" className="mt-1 inline-block text-xs text-[#800000] hover:underline">
-            Inspect &amp; revoke &rarr;
+            Manage sessions &rarr;
           </Link>
         </div>
 
         <div className="rounded-lg border border-[#f0e6e5] bg-white p-5 shadow-[0_2px_10px_rgba(90,0,0,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#8a5a58]">
-            Database &amp; RLS
+            Database Status
           </p>
           <p
             className={`mt-2 text-2xl font-bold ${
@@ -111,49 +111,39 @@ export default function AdminOverviewPage() {
             }`}
           >
             {dbReady === "connected"
-              ? "Healthy"
+              ? "Connected"
               : dbReady === "checking"
               ? "Checking..."
-              : "Degraded"}
+              : "Offline"}
           </p>
-          <p className="mt-1 text-xs text-[#8a5a58]">PostgreSQL RLS enforced</p>
         </div>
       </div>
 
-      {/* Cross-Module Summary inside Admin Portal */}
+      {/* Service Divisions Summary */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
           <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
             Garbage Fee Management
           </p>
-          <p className="mt-2 text-sm text-[#5a413d]">
+          <p className="mt-2 text-sm font-medium text-[#1b1c1c]">
             Assigned Officers: {users.filter((u) => u.role === "FEE_OFFICER").length}
-          </p>
-          <p className="mt-1 text-xs text-[#8a5a58]">
-            Protected by JWT + CSRF + FEE_OFFICER RBAC
           </p>
         </div>
         <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
           <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
             Environmental Certificates
           </p>
-          <p className="mt-2 text-sm text-[#5a413d]">
+          <p className="mt-2 text-sm font-medium text-[#1b1c1c]">
             Assigned Officers: {users.filter((u) => u.role === "ENV_OFFICER").length}
-          </p>
-          <p className="mt-1 text-xs text-[#8a5a58]">
-            Protected by JWT + CSRF + ENV_OFFICER RBAC
           </p>
         </div>
         <div className="rounded-xl border border-[#f0e6e5] bg-white p-5 shadow-2xs">
           <p className="text-xs font-bold uppercase tracking-wider text-[#800000]">
             School Waste Rewards
           </p>
-          <p className="mt-2 text-sm text-[#5a413d]">
+          <p className="mt-2 text-sm font-medium text-[#1b1c1c]">
             Teachers: {users.filter((u) => u.role === "TEACHER").length} | Supervisors:{" "}
             {users.filter((u) => u.role === "GARBAGE_SUPERVISOR").length}
-          </p>
-          <p className="mt-1 text-xs text-[#8a5a58]">
-            Single-school isolation enforced per teacher
           </p>
         </div>
       </div>

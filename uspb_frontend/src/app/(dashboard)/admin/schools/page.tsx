@@ -86,13 +86,15 @@ export default function AdminSchoolsPage() {
             Register participating Balangoda schools so teachers can be assigned in Staff Management.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((prev) => !prev)}
-          className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
-        >
-          {showForm ? "Close Form" : "+ Register School"}
-        </button>
+        {!showForm && (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="btn-hover-fx rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
+          >
+            + Register School
+          </button>
+        )}
       </div>
 
       {feedback && (
