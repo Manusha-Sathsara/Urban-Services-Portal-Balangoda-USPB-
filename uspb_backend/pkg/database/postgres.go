@@ -17,6 +17,7 @@ import (
 type RLSContext struct {
 	UserID   int
 	Role     string
+	SchoolID *int
 	AuthFlow bool
 }
 
@@ -88,6 +89,10 @@ func WithRLS(ctx context.Context, db *sqlx.DB, rls RLSContext, fn func(tx *sqlx.
 	if rls.UserID > 0 {
 		userIDStr = strconv.Itoa(rls.UserID)
 	}
+	schoolIDStr := ""
+	if rls.SchoolID != nil && *rls.SchoolID > 0 {
+		schoolIDStr = strconv.Itoa(*rls.SchoolID)
+	}
 	authFlowStr := "false"
 	if rls.AuthFlow {
 		authFlowStr = "true"
@@ -96,8 +101,9 @@ func WithRLS(ctx context.Context, db *sqlx.DB, rls RLSContext, fn func(tx *sqlx.
 	if _, err := tx.ExecContext(ctx,
 		`SELECT set_config('app.current_user_id', $1, true),
 		        set_config('app.current_role', $2, true),
-		        set_config('app.auth_flow', $3, true)`,
-		userIDStr, rls.Role, authFlowStr,
+		        set_config('app.current_school_id', $3, true),
+		        set_config('app.auth_flow', $4, true)`,
+		userIDStr, rls.Role, schoolIDStr, authFlowStr,
 	); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("apply rls context: %w", err)
