@@ -129,16 +129,40 @@ export const ENVIRONMENTAL_SERVICE_CONFIG: ServiceConfig = {
  */
 export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
   key: "schools",
-  serviceName: "School Garbage Collection & Rewards",
+  serviceName: "School Waste Rewards Management",
   serviceSubtitle: "Health Division — Balangoda Urban Council",
-  roleTitle: "School Garbage Collection & Rewards Officer",
+  roleTitle: "School Rewards Management Officer",
   defaultUserName: "Eco-Rewards Coordinator",
   navSectionLabel: "School Programme",
   navItems: [
     {
-      name: "School Green Rewards",
+      name: "School Management",
       href: "/schools",
-      icon: "🎓",
+      icon: "🏫",
+    },
+    {
+      name: "Waste Categories",
+      href: "#",
+      icon: "♻️",
+      badge: "Pending",
+    },
+    {
+      name: "Redemption & Payouts",
+      href: "#",
+      icon: "🎁",
+      badge: "Pending",
+    },
+    {
+      name: "Badge Management",
+      href: "#",
+      icon: "🏅",
+      badge: "Pending",
+    },
+    {
+      name: "Financial Reports",
+      href: "#",
+      icon: "📊",
+      badge: "Pending",
     },
   ],
 };

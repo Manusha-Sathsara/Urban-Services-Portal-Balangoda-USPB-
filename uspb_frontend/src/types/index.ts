@@ -55,6 +55,42 @@ export interface SchoolReward {
   created_at: string;
 }
 
+export interface School {
+  id: number;
+  school_name: string;
+  school_code: string;
+  address: string;
+  contact_number: string;
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+  student_count?: number | null;
+}
+
+export interface CreateSchoolDto {
+  school_name: string;
+  school_code: string;
+  address: string;
+  contact_number: string;
+  status?: "active" | "inactive";
+}
+
+export interface UpdateSchoolDto {
+  school_name: string;
+  school_code: string;
+  address: string;
+  contact_number: string;
+  status: "active" | "inactive";
+}
+
+export interface SchoolListResult {
+  schools: School[];
+  total_count: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
