@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/BalangodaUC/uspb_backend/internal/jobs"
+	"github.com/BalangodaUC/uspb_backend/internal/modules/auth"
 	"github.com/BalangodaUC/uspb_backend/internal/modules/envcert"
 	"github.com/BalangodaUC/uspb_backend/internal/modules/garbagefee"
 	"github.com/BalangodaUC/uspb_backend/internal/modules/schoolrewards"
@@ -66,7 +67,23 @@ func main() {
 		})
 	})
 
-	// Register module handlers if db is initialized
+	// 4.1. Auth routes (login & token issuance)
+	authHandler := auth.NewHandler(db)
+	authHandler.RegisterRoutes(api)
+
+	// 4.2. School Management repository & handler
+	var schoolRepo schoolrewards.SchoolRepository
+	if db != nil {
+		schoolRepo = schoolrewards.NewSchoolRepository(db)
+	} else {
+		log.Println("[INFO] PostgreSQL not connected: running School module with in-memory repository for local development")
+		schoolRepo = schoolrewards.NewMemorySchoolRepository()
+	}
+	schoolService := schoolrewards.NewSchoolService(schoolRepo)
+	schoolHandler := schoolrewards.NewSchoolHandler(schoolService)
+	schoolHandler.RegisterRoutes(api)
+
+	// Register other module handlers if db is initialized
 	if db != nil {
 		gfRepo := garbagefee.NewRepository(db)
 		gfService := garbagefee.NewService(gfRepo)
