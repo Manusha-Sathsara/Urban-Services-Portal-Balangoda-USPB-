@@ -2,6 +2,17 @@
 
 import { School } from "@/types";
 import SchoolStatusBadge from "./SchoolStatusBadge";
+import {
+  Search,
+  RotateCcw,
+  Eye,
+  Pencil,
+  Pause,
+  Play,
+  School as SchoolIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface SchoolTableProps {
   schools: School[];
@@ -37,23 +48,23 @@ export function SchoolTable({
   onRefresh,
 }: SchoolTableProps) {
   return (
-    <div className="rounded-xl border border-[#f0e6e5] bg-white shadow-[0_2px_10px_rgba(90,0,0,0.06)] overflow-hidden">
+    <div className="rounded-xl border border-stone-200 bg-white shadow-xs overflow-hidden">
       {/* Table Toolbar */}
-      <div className="flex flex-col gap-3 border-b border-[#f0e6e5] bg-[#faf4f3]/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
           <span
             className="absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400 pointer-events-none"
             aria-hidden="true"
           >
-            🔍
+            <Search className="h-4 w-4" />
           </span>
           <input
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by school name, code or address..."
-            className="w-full rounded-lg border border-[#dcc6c4] bg-white py-2 pl-9 pr-3 text-xs text-[#4a4a4a] placeholder-stone-400 focus:border-[#800000] focus:outline-none focus:ring-1 focus:ring-[#800000] transition"
+            className="w-full rounded-lg border border-stone-300 bg-white py-2 pl-9 pr-3 text-xs text-stone-800 placeholder-stone-400 focus:border-[#800000] focus:outline-none focus:ring-1 focus:ring-[#800000] transition"
             aria-label="Search schools"
           />
         </div>
@@ -62,13 +73,13 @@ export function SchoolTable({
         <div className="flex items-center gap-2">
           {/* Status Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a5a58]">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
               Status:
             </span>
             <select
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
-              className="rounded-lg border border-[#dcc6c4] bg-white px-2.5 py-1.5 text-xs font-medium text-[#5a0000] focus:border-[#800000] focus:outline-none transition cursor-pointer"
+              className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-800 focus:border-[#800000] focus:outline-none transition cursor-pointer"
               aria-label="Filter by operational status"
             >
               <option value="all">All Schools</option>
@@ -82,18 +93,18 @@ export function SchoolTable({
             type="button"
             onClick={onRefresh}
             title="Refresh schools list"
-            className="rounded-lg border border-[#dcc6c4] bg-white p-1.5 text-xs text-[#5a0000] hover:bg-[#f0e0df] transition"
+            className="rounded-lg border border-stone-200 bg-white p-1.5 text-stone-600 hover:text-[#800000] hover:bg-stone-100 transition cursor-pointer"
             aria-label="Refresh table"
           >
-            🔄
+            <RotateCcw className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
       {/* Table Data */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs text-[#4a4a4a]">
-          <thead className="border-b border-[#f0e6e5] bg-[#fcf8f7] font-semibold uppercase tracking-wider text-[#8a5a58]">
+        <table className="w-full text-left text-xs text-stone-700">
+          <thead className="border-b border-stone-200 bg-stone-50/80 font-semibold uppercase tracking-wider text-stone-500">
             <tr>
               <th scope="col" className="px-4 py-3">
                 School Code
@@ -115,28 +126,28 @@ export function SchoolTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#f0e6e5]">
+          <tbody className="divide-y divide-stone-100">
             {isLoading ? (
               // Loading Skeleton Rows
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="px-4 py-4">
-                    <div className="h-4 w-20 rounded bg-[#f0e0df]" />
+                    <div className="h-4 w-20 rounded bg-stone-100" />
                   </td>
                   <td className="px-4 py-4">
-                    <div className="h-4 w-48 rounded bg-[#f0e0df]" />
+                    <div className="h-4 w-48 rounded bg-stone-100" />
                   </td>
                   <td className="px-4 py-4 hidden md:table-cell">
-                    <div className="h-4 w-32 rounded bg-[#f0e0df]" />
+                    <div className="h-4 w-32 rounded bg-stone-100" />
                   </td>
                   <td className="px-4 py-4 hidden sm:table-cell">
-                    <div className="h-4 w-24 rounded bg-[#f0e0df]" />
+                    <div className="h-4 w-24 rounded bg-stone-100" />
                   </td>
                   <td className="px-4 py-4">
-                    <div className="h-4 w-16 rounded bg-[#f0e0df]" />
+                    <div className="h-4 w-16 rounded bg-stone-100" />
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <div className="ml-auto h-6 w-20 rounded bg-[#f0e0df]" />
+                    <div className="ml-auto h-6 w-20 rounded bg-stone-100" />
                   </td>
                 </tr>
               ))
@@ -144,16 +155,16 @@ export function SchoolTable({
               // Empty State
               <tr>
                 <td colSpan={6} className="py-12 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#f0e0df] text-xl">
-                    🏫
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-stone-500">
+                    <SchoolIcon className="h-5 w-5" />
                   </div>
-                  <h4 className="mt-3 font-serif text-sm font-bold text-[#5a0000]">
+                  <h4 className="mt-3 font-sans text-sm font-semibold text-stone-800">
                     No Schools Found
                   </h4>
-                  <p className="mt-1 text-xs text-[#8a5a58]">
+                  <p className="mt-1 text-xs text-stone-500 max-w-sm mx-auto">
                     {search || statusFilter !== "all"
                       ? "Try adjusting your search criteria or filter options."
-                      : "No schools have been registered yet. Click 'Register New School' above."}
+                      : "No schools have been registered yet. Click 'Register New School' above to add the first institution."}
                   </p>
                 </td>
               </tr>
@@ -164,33 +175,33 @@ export function SchoolTable({
                 return (
                   <tr
                     key={school.id}
-                    className="hover:bg-[#faf4f3]/80 transition-colors"
+                    className="hover:bg-stone-50/70 transition-colors"
                   >
                     {/* Code */}
-                    <td className="px-4 py-3.5 font-mono font-bold text-[#5a0000]">
-                      <span className="rounded bg-[#f0e0df] px-2 py-0.5 text-[11px]">
+                    <td className="px-4 py-3.5 font-mono font-semibold text-[#800000]">
+                      <span className="rounded bg-[#f0e0df]/60 px-2 py-0.5 text-[11px]">
                         {school.school_code}
                       </span>
                     </td>
 
                     {/* Name */}
-                    <td className="px-4 py-3.5 font-semibold text-[#5a0000]">
+                    <td className="px-4 py-3.5 font-semibold text-stone-900">
                       <button
                         type="button"
                         onClick={() => onViewDetails(school)}
-                        className="text-left hover:underline focus:outline-none"
+                        className="text-left hover:text-[#800000] hover:underline focus:outline-none transition-colors"
                       >
                         {school.school_name}
                       </button>
                     </td>
 
                     {/* Address */}
-                    <td className="px-4 py-3.5 text-[#8a5a58] hidden md:table-cell max-w-xs truncate">
+                    <td className="px-4 py-3.5 text-stone-500 hidden md:table-cell max-w-xs truncate">
                       {school.address || "—"}
                     </td>
 
                     {/* Contact */}
-                    <td className="px-4 py-3.5 text-[#8a5a58] font-mono hidden sm:table-cell">
+                    <td className="px-4 py-3.5 text-stone-500 font-mono hidden sm:table-cell">
                       {school.contact_number || "—"}
                     </td>
 
@@ -199,40 +210,40 @@ export function SchoolTable({
                       <SchoolStatusBadge status={school.status} />
                     </td>
 
-                    {/* Actions */}
+                    {/* Actions - Clean borderless buttons with subtle hover effects */}
                     <td className="px-4 py-3.5 text-right">
                       <div className="inline-flex items-center gap-1">
                         {/* View Details */}
                         <button
                           type="button"
                           onClick={() => onViewDetails(school)}
-                          title="View institution details"
-                          className="rounded border border-[#dcc6c4] bg-white p-1 text-[#5a0000] hover:bg-[#f0e0df] transition"
+                          title="View school profile"
+                          className="rounded-md p-1.5 text-stone-500 hover:text-[#800000] hover:bg-[#f0e0df]/60 transition-colors cursor-pointer"
                           aria-label={`View ${school.school_name}`}
                         >
-                          👁️
+                          <Eye className="h-4 w-4" />
                         </button>
 
                         {/* Edit */}
                         <button
                           type="button"
                           onClick={() => onEdit(school)}
-                          title="Edit school information"
-                          className="rounded border border-[#dcc6c4] bg-white p-1 text-[#5a0000] hover:bg-[#f0e0df] transition"
+                          title="Edit school details"
+                          className="rounded-md p-1.5 text-stone-500 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
                           aria-label={`Edit ${school.school_name}`}
                         >
-                          ✏️
+                          <Pencil className="h-4 w-4" />
                         </button>
 
-                        {/* Toggle Status (Activate/Deactivate) */}
+                        {/* Toggle Status (Activate / Deactivate) */}
                         <button
                           type="button"
                           onClick={() => onToggleStatus(school)}
                           title={isActive ? "Deactivate school" : "Activate school"}
-                          className={`rounded border p-1 text-xs transition ${
+                          className={`rounded-md p-1.5 transition-colors cursor-pointer ${
                             isActive
-                              ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                              : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                              ? "text-stone-500 hover:text-amber-700 hover:bg-amber-50"
+                              : "text-stone-500 hover:text-emerald-700 hover:bg-emerald-50"
                           }`}
                           aria-label={
                             isActive
@@ -240,7 +251,11 @@ export function SchoolTable({
                               : `Activate ${school.school_name}`
                           }
                         >
-                          {isActive ? "⏸️" : "▶️"}
+                          {isActive ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -253,17 +268,17 @@ export function SchoolTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="flex flex-col gap-2 border-t border-[#f0e6e5] bg-[#faf4f3]/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between text-xs text-[#8a5a58]">
+      <div className="flex flex-col gap-2 border-t border-stone-200 bg-stone-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between text-xs text-stone-500">
         <div>
           Showing{" "}
-          <span className="font-semibold text-[#5a0000]">
+          <span className="font-semibold text-stone-800">
             {schools.length > 0 ? (currentPage - 1) * 10 + 1 : 0}
           </span>{" "}
           to{" "}
-          <span className="font-semibold text-[#5a0000]">
+          <span className="font-semibold text-stone-800">
             {Math.min(currentPage * 10, totalCount)}
           </span>{" "}
-          of <span className="font-semibold text-[#5a0000]">{totalCount}</span>{" "}
+          of <span className="font-semibold text-stone-800">{totalCount}</span>{" "}
           institutions
         </div>
 
@@ -273,9 +288,9 @@ export function SchoolTable({
               type="button"
               disabled={currentPage <= 1 || isLoading}
               onClick={() => onPageChange(currentPage - 1)}
-              className="rounded border border-[#dcc6c4] bg-white px-2.5 py-1 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] disabled:opacity-40 transition"
+              className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40 transition cursor-pointer"
             >
-              &larr; Prev
+              <ChevronLeft className="h-3.5 w-3.5" /> Prev
             </button>
 
             {Array.from({ length: totalPages }).map((_, i) => {
@@ -286,10 +301,10 @@ export function SchoolTable({
                   key={pageNum}
                   type="button"
                   onClick={() => onPageChange(pageNum)}
-                  className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                     isCurrent
                       ? "bg-[#800000] text-white"
-                      : "border border-[#dcc6c4] bg-white text-[#5a0000] hover:bg-[#f0e0df]"
+                      : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
                   }`}
                 >
                   {pageNum}
@@ -301,9 +316,9 @@ export function SchoolTable({
               type="button"
               disabled={currentPage >= totalPages || isLoading}
               onClick={() => onPageChange(currentPage + 1)}
-              className="rounded border border-[#dcc6c4] bg-white px-2.5 py-1 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] disabled:opacity-40 transition"
+              className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40 transition cursor-pointer"
             >
-              Next &rarr;
+              Next <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         )}

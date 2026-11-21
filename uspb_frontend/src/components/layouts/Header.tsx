@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { getServiceConfig } from "@/lib/serviceConfig";
+import { User as UserIcon } from "lucide-react";
 
 export interface HeaderProps {
   /** Optional role override; if omitted, automatically derived from the active service route */
@@ -48,7 +49,7 @@ export function Header({
             />
           </div>
           <div>
-            <h1 className="font-serif text-[14px] md:text-[15px] font-bold tracking-tight text-[#5a0000] leading-tight">
+            <h1 className="font-sans text-[14px] md:text-[15px] font-bold tracking-tight text-[#5a0000] leading-tight">
               {activeServiceName}
             </h1>
             <p className="text-[11px] md:text-[11.5px] text-[#8a5a58]">
@@ -70,21 +71,15 @@ export function Header({
 
         {/* User profile & service role badge */}
         <div
-          className="flex items-center gap-2 rounded-full border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 shadow-xs max-w-[280px] sm:max-w-none"
+          className="flex items-center gap-2 rounded-full border border-stone-200 bg-[#faf4f3] px-3 py-1.5 shadow-2xs"
           title={`Active Role: ${activeRoleTitle}`}
         >
-          <div
-            className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"
-            aria-hidden="true"
-          />
-          <div className="truncate text-xs text-[#5a0000]">
-            <span className="font-semibold text-[#5a0000]">
-              {activeUserName}
-            </span>{" "}
-            <span className="hidden sm:inline text-[#8a5a58] font-normal">
-              ({activeRoleTitle})
-            </span>
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f0e0df] text-[#5a0000]">
+            <UserIcon className="h-3 w-3" />
           </div>
+          <span className="truncate text-xs font-semibold text-[#5a0000]">
+            {activeUserName}
+          </span>
         </div>
 
         {/* Sign out link */}

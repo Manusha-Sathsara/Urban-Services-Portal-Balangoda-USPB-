@@ -3,7 +3,65 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { getServiceConfig, isNavItemActive, NavItem } from "@/lib/serviceConfig";
+import {
+  getServiceConfig,
+  isNavItemActive,
+  NavItem,
+} from "@/lib/serviceConfig";
+import {
+  School,
+  Recycle,
+  Gift,
+  Award,
+  BarChart3,
+  LayoutDashboard,
+  ShieldCheck,
+  Building2,
+  FileText,
+  CreditCard,
+  FolderArchive,
+  Lock,
+} from "lucide-react";
+
+function renderNavIcon(iconName?: string) {
+  if (!iconName) return null;
+
+  switch (iconName.toLowerCase()) {
+    case "school":
+    case "🏫":
+    case "🎓":
+      return <School className="h-4 w-4 shrink-0" />;
+    case "recycle":
+    case "♻️":
+      return <Recycle className="h-4 w-4 shrink-0" />;
+    case "gift":
+    case "🎁":
+      return <Gift className="h-4 w-4 shrink-0" />;
+    case "award":
+    case "🏅":
+      return <Award className="h-4 w-4 shrink-0" />;
+    case "barchart3":
+    case "📊":
+      return <BarChart3 className="h-4 w-4 shrink-0" />;
+    case "dashboard":
+    case "⚙️":
+      return <LayoutDashboard className="h-4 w-4 shrink-0" />;
+    case "shield":
+    case "🛡️":
+      return <ShieldCheck className="h-4 w-4 shrink-0" />;
+    case "business":
+    case "🏪":
+      return <Building2 className="h-4 w-4 shrink-0" />;
+    case "payment":
+    case "💳":
+      return <CreditCard className="h-4 w-4 shrink-0" />;
+    case "annual":
+    case "📁":
+      return <FolderArchive className="h-4 w-4 shrink-0" />;
+    default:
+      return <FileText className="h-4 w-4 shrink-0" />;
+  }
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -29,9 +87,9 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Shared Sidebar Container */}
+      {/* Shared Sidebar Container - widened to w-72 to eliminate cut-off text */}
       <aside
-        className={`w-64 shrink-0 border-r border-[#f0e6e5] bg-white p-4 transition-all duration-200 ${
+        className={`w-72 shrink-0 border-r border-[#f0e6e5] bg-white p-4 transition-all duration-200 ${
           isMobileOpen ? "block" : "hidden md:block"
         }`}
       >
@@ -46,7 +104,10 @@ export function Sidebar() {
         </div>
 
         {/* Dynamic Navigation Items for the Active Service */}
-        <nav className="space-y-1.5" aria-label={`${config.serviceName} navigation`}>
+        <nav
+          className="space-y-1.5"
+          aria-label={`${config.serviceName} navigation`}
+        >
           {config.navItems.map((item: NavItem) => {
             const isActive = isNavItemActive(pathname, item.href);
             const isPlaceholder = item.href === "#";
@@ -65,8 +126,8 @@ export function Sidebar() {
                   isActive
                     ? "bg-[#800000] text-white shadow-xs font-semibold"
                     : isPlaceholder
-                    ? "text-[#8a5a58] hover:bg-[#f0e0df]/40 hover:text-[#5a0000] cursor-pointer"
-                    : "text-[#5a0000] hover:bg-[#f0e0df]/70 hover:text-[#5a0000]"
+                    ? "text-[#8a5a58] hover:bg-[#faf4f3] hover:text-[#5a0000] cursor-pointer"
+                    : "text-[#5a0000] hover:bg-[#faf4f3] hover:text-[#5a0000]"
                 }`}
                 title={
                   isPlaceholder
@@ -76,22 +137,25 @@ export function Sidebar() {
                 aria-current={isActive ? "page" : undefined}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {item.icon && (
-                    <span className="text-base shrink-0" aria-hidden="true">
-                      {item.icon}
-                    </span>
-                  )}
+                  <span
+                    className={`shrink-0 ${
+                      isActive ? "text-white" : "text-[#8a5a58]"
+                    }`}
+                  >
+                    {renderNavIcon(item.icon)}
+                  </span>
                   <span className="truncate">{item.name}</span>
                 </div>
 
                 {item.badge && (
                   <span
-                    className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                    className={`ml-2 shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
                       isActive
                         ? "bg-white/20 text-white"
-                        : "bg-[#fbbf24]/20 text-[#5a3a00] border border-[#fbbf24]/40"
+                        : "bg-stone-100 text-stone-500 border border-stone-200"
                     }`}
                   >
+                    {isPlaceholder && <Lock className="h-2.5 w-2.5 text-stone-400" />}
                     {item.badge}
                   </span>
                 )}
@@ -99,16 +163,6 @@ export function Sidebar() {
             );
           })}
         </nav>
-
-        {/* Informative footer card for non-implemented sections or quick context */}
-        <div className="mt-8 rounded-lg border border-[#f0e6e5] bg-[#faf4f3] p-3 text-[11px] text-[#8a5a58] shadow-2xs">
-          <p className="font-semibold text-[#5a0000]">
-            {config.serviceName}
-          </p>
-          <p className="mt-0.5 text-[10.5px] leading-relaxed">
-            Balangoda Urban Council municipal portal interface.
-          </p>
-        </div>
       </aside>
     </>
   );

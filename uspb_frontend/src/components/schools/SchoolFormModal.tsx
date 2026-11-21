@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreateSchoolDto, School, UpdateSchoolDto } from "@/types";
+import { X, AlertCircle } from "lucide-react";
 
 interface SchoolFormModalProps {
   isOpen: boolean;
@@ -107,15 +108,15 @@ export function SchoolFormModal({
       aria-labelledby="modal-title"
     >
       <div className="w-full max-w-lg rounded-xl border border-[#dcc6c4] bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between border-b border-[#f0e6e5] pb-4">
+        <div className="flex items-start justify-between border-b border-stone-200 pb-4">
           <div>
             <h3
               id="modal-title"
-              className="font-serif text-xl font-bold text-[#5a0000]"
+              className="font-sans text-xl font-bold text-stone-900"
             >
               {isEditMode ? "Edit School Details" : "Register New School"}
             </h3>
-            <p className="mt-1 text-xs text-[#8a5a58]">
+            <p className="mt-1 text-xs text-stone-500">
               {isEditMode
                 ? "Update municipal school registry records."
                 : "Add an educational institution to Balangoda Urban Council Green Rewards."}
@@ -124,17 +125,19 @@ export function SchoolFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-[#8a5a58] hover:bg-[#f0e0df] hover:text-[#5a0000] transition"
+            className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
             aria-label="Close modal"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {serverError && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-            <span className="font-semibold">Error: </span>
-            {serverError}
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+            <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+            <span>
+              <strong>Error:</strong> {serverError}
+            </span>
           </div>
         )}
 

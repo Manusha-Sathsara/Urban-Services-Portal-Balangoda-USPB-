@@ -8,6 +8,15 @@ import SchoolTable from "@/components/schools/SchoolTable";
 import SchoolFormModal from "@/components/schools/SchoolFormModal";
 import SchoolDetailsModal from "@/components/schools/SchoolDetailsModal";
 import StatusConfirmModal from "@/components/schools/StatusConfirmModal";
+import {
+  School as SchoolIcon,
+  CheckCircle2,
+  PauseCircle,
+  ShieldCheck,
+  Plus,
+  AlertCircle,
+  X,
+} from "lucide-react";
 
 export default function SchoolsPage() {
   const [schools, setSchools] = useState<School[]>([]);
@@ -128,18 +137,18 @@ export default function SchoolsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#f0e6e5] pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-stone-200 pb-5">
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded bg-[#f0e0df] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#5a0000]">
               Municipal Administration
             </span>
-            <span className="text-xs text-[#8a5a58]">School Waste Rewards</span>
+            <span className="text-xs text-stone-500">School Waste Rewards</span>
           </div>
-          <h2 className="mt-1 font-serif text-2xl md:text-3xl font-bold tracking-tight text-[#5a0000]">
+          <h2 className="mt-1 font-sans text-2xl md:text-3xl font-bold tracking-tight text-stone-900">
             School Management
           </h2>
-          <p className="mt-1 text-xs md:text-sm text-[#8a5a58]">
+          <p className="mt-1 text-xs md:text-sm text-stone-500">
             Register, supervise, and manage participating educational institutions in Balangoda Urban Council.
           </p>
         </div>
@@ -152,7 +161,7 @@ export default function SchoolsPage() {
           }}
           className="btn-hover-fx inline-flex items-center justify-center gap-2 rounded-lg bg-[#800000] px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#680000] transition self-start sm:self-auto cursor-pointer"
         >
-          <span className="text-base leading-none">＋</span>
+          <Plus className="h-4 w-4" />
           <span>Register New School</span>
         </button>
       </div>
@@ -161,15 +170,16 @@ export default function SchoolsPage() {
       {successMessage && (
         <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 animate-in fade-in">
           <div className="flex items-center gap-2">
-            <span>✅</span>
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
             <span className="font-semibold">{successMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-900"
+            className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+            aria-label="Dismiss message"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -177,7 +187,7 @@ export default function SchoolsPage() {
       {error && (
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800 animate-in fade-in">
           <div className="flex items-center gap-2">
-            <span>⚠️</span>
+            <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
             <span>
               <strong>Error:</strong> {error}
             </span>
@@ -185,42 +195,43 @@ export default function SchoolsPage() {
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900"
+            className="text-red-700 hover:text-red-900 cursor-pointer"
+            aria-label="Dismiss error"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Summary KPI Cards */}
+      {/* Summary KPI Cards - Uniform borders, shadows and styling */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Registered"
           value={totalCount}
           description="Institutions recorded in Balangoda municipal registry"
-          icon="🏫"
+          icon={<SchoolIcon className="h-5 w-5" />}
           variant="default"
         />
         <StatCard
           label="Active Participants"
           value={activeCount}
           description="Eligible for ongoing waste collection logging"
-          icon="♻️"
+          icon={<CheckCircle2 className="h-5 w-5" />}
           variant="success"
         />
         <StatCard
           label="Inactive / Suspended"
           value={inactiveCount}
           description="Temporarily paused from waste points accrual"
-          icon="⏸️"
+          icon={<PauseCircle className="h-5 w-5" />}
           variant="warning"
         />
         <StatCard
           label="Program Coverage"
           value="100%"
           description="Balangoda Urban Council municipal educational zone"
-          icon="🏅"
-          variant="revenue"
+          icon={<ShieldCheck className="h-5 w-5" />}
+          variant="info"
         />
       </div>
 
