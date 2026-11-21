@@ -1,0 +1,3 @@
+# Images Directory
+Store public image assets here (e.g., .png, .jpg, .svg, .webp).
+Files placed in this folder can be referenced via `/images/<filename>`.
