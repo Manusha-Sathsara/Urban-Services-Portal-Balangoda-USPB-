@@ -532,8 +532,7 @@ func (r *PostgresLedgerRepository) GetDashboardSummary(ctx context.Context, acto
 			SELECT COUNT(*)
 			FROM waste_collections
 			WHERE NOT is_reversed AND ($1 = 0 OR school_id = $1)
-		`, sf).Scan(&sum.TotalCollections); err != nil {
-		}
+		`, sf).Scan(&sum.TotalCollections)
 	})
 	return &sum, err
 }
