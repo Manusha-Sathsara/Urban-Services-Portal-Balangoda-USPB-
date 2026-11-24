@@ -25,7 +25,7 @@ export function StatusConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs transition-opacity animate-in fade-in"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs transition-opacity animate-in fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"

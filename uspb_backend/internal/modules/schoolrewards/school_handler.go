@@ -34,6 +34,7 @@ func (h *SchoolHandler) RegisterRoutes(router fiber.Router) {
 	schools.Post("/", h.Create)
 	schools.Put("/:id", h.Update)
 	schools.Patch("/:id/status", h.UpdateStatus)
+	schools.Put("/:id/status", h.UpdateStatus)
 	schools.Delete("/:id", middleware.RequireRoles("ADMIN"), h.Delete)
 }
 

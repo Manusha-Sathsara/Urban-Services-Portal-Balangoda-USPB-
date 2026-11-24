@@ -311,6 +311,8 @@ export default function SchoolsPage() {
           setIsFormModalOpen(true);
         }}
         onToggleStatus={(school) => {
+          setIsDetailsModalOpen(false);
+          setSelectedSchool(null);
           setSchoolToToggleStatus(school);
           setIsStatusModalOpen(true);
         }}
@@ -342,6 +344,8 @@ export default function SchoolsPage() {
           setIsFormModalOpen(true);
         }}
         onToggleStatus={(school) => {
+          setIsDetailsModalOpen(false);
+          setSelectedSchool(null);
           setSchoolToToggleStatus(school);
           setIsStatusModalOpen(true);
         }}
