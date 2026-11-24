@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// Added InspectionNotes and InspectionDate for your sub-module
 type EnvironmentalCert struct {
 	ID               int        `db:"id" json:"id"`
 	BusinessName     string     `db:"business_name" json:"business_name"`
@@ -20,15 +21,20 @@ type EnvironmentalCert struct {
 	Status           string     `db:"status" json:"status"`
 	IssuedDate       *time.Time `db:"issued_date" json:"issued_date,omitempty"`
 	ExpiryDate       *time.Time `db:"expiry_date" json:"expiry_date,omitempty"`
+	InspectionNotes  *string    `db:"inspection_notes" json:"inspection_notes,omitempty"`
+	InspectionDate   *time.Time `db:"inspection_date" json:"inspection_date,omitempty"`
 	CreatedBy        *int       `db:"created_by" json:"created_by,omitempty"`
 	CreatedAt        time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time  `db:"updated_at" json:"updated_at"`
 }
 
+// Added your two new functions to the Repository interface
 type Repository interface {
 	GetAll() ([]EnvironmentalCert, error)
 	GetByID(id string) (*EnvironmentalCert, error)
 	Create(cert *EnvironmentalCert) error
+	UpdateInspectionStatus(id int, status string, notes string) error
+	GetApproved() ([]EnvironmentalCert, error)
 }
 
 type repository struct {
@@ -44,7 +50,7 @@ func (r *repository) GetAll() ([]EnvironmentalCert, error) {
 	query := `
 		SELECT id, business_name, registration_no, owner_name, owner_nic,
 		       contact_phone, contact_email, address, ward_no, business_category,
-		       status, issued_date, expiry_date, created_by, created_at, updated_at
+		       status, issued_date, expiry_date, inspection_notes, inspection_date, created_by, created_at, updated_at
 		FROM env_cert_businesses
 		ORDER BY created_at DESC`
 	err := r.db.Select(&certs, query)
@@ -56,7 +62,7 @@ func (r *repository) GetByID(id string) (*EnvironmentalCert, error) {
 	query := `
 		SELECT id, business_name, registration_no, owner_name, owner_nic,
 		       contact_phone, contact_email, address, ward_no, business_category,
-		       status, issued_date, expiry_date, created_by, created_at, updated_at
+		       status, issued_date, expiry_date, inspection_notes, inspection_date, created_by, created_at, updated_at
 		FROM env_cert_businesses
 		WHERE id = $1`
 	err := r.db.Get(&cert, query, id)
@@ -89,4 +95,32 @@ func (r *repository) Create(cert *EnvironmentalCert) error {
 		cert.Status,
 		cert.CreatedBy,
 	).Scan(&cert.ID, &cert.CreatedAt, &cert.UpdatedAt)
+}
+
+// UpdateInspectionStatus is your PATCH API database function
+func (r *repository) UpdateInspectionStatus(id int, status string, notes string) error {
+	query := `
+		UPDATE env_cert_businesses 
+		SET status = $1, 
+		    inspection_notes = $2, 
+		    inspection_date = CURRENT_DATE,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $3
+	`
+	_, err := r.db.Exec(query, status, notes, id)
+	return err
+}
+
+// GetApproved is your GET API database function for the Print Queue
+func (r *repository) GetApproved() ([]EnvironmentalCert, error) {
+	certs := []EnvironmentalCert{}
+	query := `
+		SELECT id, business_name, registration_no, owner_name, owner_nic,
+		       contact_phone, contact_email, address, ward_no, business_category,
+		       status, issued_date, expiry_date, inspection_notes, inspection_date, created_by, created_at, updated_at
+		FROM env_cert_businesses
+		WHERE status = 'APPROVED'
+		ORDER BY updated_at DESC`
+	err := r.db.Select(&certs, query)
+	return certs, err
 }
