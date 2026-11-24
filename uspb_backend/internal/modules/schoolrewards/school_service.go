@@ -24,6 +24,7 @@ type SchoolService interface {
 	CreateSchool(req *CreateSchoolRequest) (*School, error)
 	ListSchools(filter SchoolListFilter) (*SchoolListResult, error)
 	GetSchoolByID(id int) (*School, error)
+	GetStats() (*SchoolStats, error)
 	UpdateSchool(id int, req *UpdateSchoolRequest) (*School, error)
 	UpdateSchoolStatus(id int, status string) (*School, error)
 	DeleteSchool(id int) error
@@ -130,6 +131,10 @@ func (s *schoolService) GetSchoolByID(id int) (*School, error) {
 	// In Phase 1, student module is not yet implemented.
 	// Leave StudentCount as nil so frontend displays the appropriate unavailable state.
 	return school, nil
+}
+
+func (s *schoolService) GetStats() (*SchoolStats, error) {
+	return s.repo.GetStats()
 }
 
 func (s *schoolService) UpdateSchool(id int, req *UpdateSchoolRequest) (*School, error) {

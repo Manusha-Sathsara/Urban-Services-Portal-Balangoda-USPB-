@@ -29,11 +29,21 @@ func (h *SchoolHandler) RegisterRoutes(router fiber.Router) {
 	schools.Use(middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR"))
 
 	schools.Get("/", h.List)
+	schools.Get("/stats", h.GetStats)
 	schools.Get("/:id", h.GetByID)
 	schools.Post("/", h.Create)
 	schools.Put("/:id", h.Update)
 	schools.Patch("/:id/status", h.UpdateStatus)
-	schools.Delete("/:id", h.Delete)
+	schools.Delete("/:id", middleware.RequireRoles("ADMIN"), h.Delete)
+}
+
+// GetStats retrieves global municipal program statistics across all schools
+func (h *SchoolHandler) GetStats(c *fiber.Ctx) error {
+	stats, err := h.service.GetStats()
+	if err != nil {
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to retrieve school statistics: "+err.Error())
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "School statistics retrieved successfully", stats)
 }
 
 // List retrieves paginated and filtered schools

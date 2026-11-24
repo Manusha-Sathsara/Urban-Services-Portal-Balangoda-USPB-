@@ -62,3 +62,11 @@ type SchoolListResult struct {
 	Limit      int      `json:"limit"`
 	TotalPages int      `json:"total_pages"`
 }
+
+// SchoolStats represents municipal program metrics across all schools
+type SchoolStats struct {
+	TotalRegistered int     `db:"total_registered" json:"total_registered"`
+	ActiveSchools   int     `db:"active_schools" json:"active_schools"`
+	InactiveSchools int     `db:"inactive_schools" json:"inactive_schools"`
+	ProgramCoverage float64 `db:"program_coverage" json:"program_coverage"`
+}

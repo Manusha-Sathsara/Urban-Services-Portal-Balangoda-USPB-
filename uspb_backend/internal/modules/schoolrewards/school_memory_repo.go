@@ -3,6 +3,7 @@ package schoolrewards
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -21,15 +22,15 @@ func NewMemorySchoolRepository() SchoolRepository {
 		nextID:  1,
 	}
 
-	// Seed with a few initial Balangoda educational institutions
+	// Seed with 5 authentic Balangoda educational institutions
 	now := time.Now()
 	seeds := []School{
 		{
 			ID:            1,
 			SchoolName:    "Balangoda Ananda Maithreya Central College",
 			SchoolCode:    "BAMCC-001",
-			Address:       "Hospital Road, Balangoda",
-			ContactNumber: "+94 45 228 7210",
+			Address:       "Barnes Ratwatte Mawatha, Balangoda",
+			ContactNumber: "045-2287234",
 			Status:        SchoolStatusActive,
 			CreatedAt:     now.Add(-60 * 24 * time.Hour),
 			UpdatedAt:     now.Add(-10 * 24 * time.Hour),
@@ -38,8 +39,8 @@ func NewMemorySchoolRepository() SchoolRepository {
 			ID:            2,
 			SchoolName:    "St. Agnes Convent Balangoda",
 			SchoolCode:    "SACB-002",
-			Address:       "Church Road, Balangoda",
-			ContactNumber: "+94 45 228 7345",
+			Address:       "Convent Road, Balangoda",
+			ContactNumber: "045-2287512",
 			Status:        SchoolStatusActive,
 			CreatedAt:     now.Add(-45 * 24 * time.Hour),
 			UpdatedAt:     now.Add(-5 * 24 * time.Hour),
@@ -49,7 +50,7 @@ func NewMemorySchoolRepository() SchoolRepository {
 			SchoolName:    "Meddakanda Maha Vidyalaya",
 			SchoolCode:    "MMV-003",
 			Address:       "Meddakanda, Balangoda",
-			ContactNumber: "+94 45 228 7890",
+			ContactNumber: "045-2288110",
 			Status:        SchoolStatusActive,
 			CreatedAt:     now.Add(-30 * 24 * time.Hour),
 			UpdatedAt:     now.Add(-2 * 24 * time.Hour),
@@ -58,10 +59,20 @@ func NewMemorySchoolRepository() SchoolRepository {
 			ID:            4,
 			SchoolName:    "Jeilani National College",
 			SchoolCode:    "JNC-004",
-			Address:       "Main Street, Balangoda",
-			ContactNumber: "+94 45 228 7555",
+			Address:       "Colombo Road, Balangoda",
+			ContactNumber: "045-2289400",
 			Status:        SchoolStatusInactive,
 			CreatedAt:     now.Add(-20 * 24 * time.Hour),
+			UpdatedAt:     now.Add(-1 * 24 * time.Hour),
+		},
+		{
+			ID:            5,
+			SchoolName:    "Balangoda Buddhist Ladies College",
+			SchoolCode:    "BBLC-005",
+			Address:       "Station Road, Balangoda",
+			ContactNumber: "045-2289890",
+			Status:        SchoolStatusInactive,
+			CreatedAt:     now.Add(-15 * 24 * time.Hour),
 			UpdatedAt:     now.Add(-1 * 24 * time.Hour),
 		},
 	}
@@ -180,6 +191,35 @@ func (r *memorySchoolRepository) GetByCode(code string) (*School, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (r *memorySchoolRepository) GetStats() (*SchoolStats, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	total := len(r.schools)
+	active := 0
+	inactive := 0
+
+	for _, s := range r.schools {
+		if s.Status == SchoolStatusActive {
+			active++
+		} else if s.Status == SchoolStatusInactive {
+			inactive++
+		}
+	}
+
+	var coverage float64
+	if total > 0 {
+		coverage = math.Round((float64(active)/float64(total))*1000) / 10
+	}
+
+	return &SchoolStats{
+		TotalRegistered: total,
+		ActiveSchools:   active,
+		InactiveSchools: inactive,
+		ProgramCoverage: coverage,
+	}, nil
 }
 
 func (r *memorySchoolRepository) Update(school *School) error {

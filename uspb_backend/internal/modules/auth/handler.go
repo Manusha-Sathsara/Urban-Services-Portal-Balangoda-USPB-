@@ -116,9 +116,24 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	})
 }
 
-// DemoToken returns a pre-signed ADMIN JWT token for seamless local testing
+// DemoToken returns a pre-signed JWT token for seamless local development testing only
 func (h *Handler) DemoToken(c *fiber.Ctx) error {
+	appEnv := strings.ToLower(os.Getenv("APP_ENV"))
+	if appEnv == "" {
+		appEnv = strings.ToLower(os.Getenv("ENV"))
+	}
+	enableDemo := strings.ToLower(os.Getenv("ENABLE_DEMO_AUTH"))
+
+	// Block in production environments unless explicitly allowed with ENABLE_DEMO_AUTH=true
+	if (appEnv == "production" || appEnv == "prod") && enableDemo != "true" {
+		return utils.ErrorResponse(c, fiber.StatusForbidden, "Demo authentication is disabled in production environments")
+	}
+
 	role := c.Query("role", "ADMIN")
+	if role != "ADMIN" && role != "GARBAGE_SUPERVISOR" && role != "TEACHER" && role != "ENV_OFFICER" && role != "FEE_OFFICER" {
+		role = "ADMIN"
+	}
+
 	token, err := generateToken("1", role, "admin@balangoda.gov.lk")
 	if err != nil {
 		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to create demo token: "+err.Error())

@@ -4,6 +4,7 @@ import {
   CreateSchoolDto,
   School,
   SchoolListResult,
+  SchoolStats,
   UpdateSchoolDto,
 } from "@/types";
 
@@ -33,6 +34,17 @@ export const schoolService = {
       throw new Error(response.data.error || "Failed to retrieve schools");
     }
 
+    return response.data.data;
+  },
+
+  /**
+   * Fetch global municipal program statistics across all schools
+   */
+  async getSchoolStats(): Promise<SchoolStats> {
+    const response = await api.get<ApiResponse<SchoolStats>>("/schools/stats");
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || "Failed to retrieve school statistics");
+    }
     return response.data.data;
   },
 

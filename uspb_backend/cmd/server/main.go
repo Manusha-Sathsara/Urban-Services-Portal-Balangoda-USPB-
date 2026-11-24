@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/BalangodaUC/uspb_backend/internal/jobs"
 	"github.com/BalangodaUC/uspb_backend/internal/modules/auth"
@@ -44,9 +45,18 @@ func main() {
 	}))
 
 	// 3. Database connection pool
+	appEnv := strings.ToLower(os.Getenv("APP_ENV"))
+	if appEnv == "" {
+		appEnv = strings.ToLower(os.Getenv("ENV"))
+	}
+
 	db, err := database.ConnectPostgres()
 	if err != nil {
-		log.Printf("[WARN] PostgreSQL connection warning: %v. Scaffolding mode active.", err)
+		if appEnv == "production" || appEnv == "prod" {
+			log.Fatalf("[FATAL] PostgreSQL connection failed in production: %v", err)
+		}
+		log.Printf("[WARN] PostgreSQL connection warning: %v.", err)
+		log.Println("[INFO] Running in local development mode with in-memory repository fallback.")
 	} else {
 		defer db.Close()
 

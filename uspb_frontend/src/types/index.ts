@@ -91,6 +91,13 @@ export interface SchoolListResult {
   total_pages: number;
 }
 
+export interface SchoolStats {
+  total_registered: number;
+  active_schools: number;
+  inactive_schools: number;
+  program_coverage: number;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;

@@ -3,6 +3,7 @@ package schoolrewards
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -14,6 +15,7 @@ type SchoolRepository interface {
 	GetAll(filter SchoolListFilter) ([]School, int, error)
 	GetByID(id int) (*School, error)
 	GetByCode(code string) (*School, error)
+	GetStats() (*SchoolStats, error)
 	Update(school *School) error
 	UpdateStatus(id int, status SchoolStatus) error
 	HasAssociatedHistory(id int) (bool, error)
@@ -139,6 +141,37 @@ func (r *schoolRepository) GetByCode(code string) (*School, error) {
 		return nil, fmt.Errorf("failed to get school by code: %w", err)
 	}
 	return &school, nil
+}
+
+func (r *schoolRepository) GetStats() (*SchoolStats, error) {
+	query := `
+		SELECT 
+			COUNT(*) AS total_registered,
+			COALESCE(COUNT(CASE WHEN status = 'active' THEN 1 END), 0) AS active_schools,
+			COALESCE(COUNT(CASE WHEN status = 'inactive' THEN 1 END), 0) AS inactive_schools
+		FROM schools
+	`
+	var stats struct {
+		TotalRegistered int `db:"total_registered"`
+		ActiveSchools   int `db:"active_schools"`
+		InactiveSchools int `db:"inactive_schools"`
+	}
+
+	if err := r.db.Get(&stats, query); err != nil {
+		return nil, fmt.Errorf("failed to retrieve school statistics: %w", err)
+	}
+
+	var coverage float64
+	if stats.TotalRegistered > 0 {
+		coverage = math.Round((float64(stats.ActiveSchools)/float64(stats.TotalRegistered))*1000) / 10
+	}
+
+	return &SchoolStats{
+		TotalRegistered: stats.TotalRegistered,
+		ActiveSchools:   stats.ActiveSchools,
+		InactiveSchools: stats.InactiveSchools,
+		ProgramCoverage: coverage,
+	}, nil
 }
 
 func (r *schoolRepository) Update(school *School) error {

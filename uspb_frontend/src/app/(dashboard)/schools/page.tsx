@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CreateSchoolDto, School, UpdateSchoolDto } from "@/types";
+import { CreateSchoolDto, School, SchoolStats, UpdateSchoolDto } from "@/types";
 import schoolService from "@/services/schoolService";
 import { StatCard } from "@/components/shared/StatCard";
 import SchoolTable from "@/components/schools/SchoolTable";
@@ -30,6 +30,14 @@ export default function SchoolsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Global Municipal Program Statistics (independent of filters)
+  const [stats, setStats] = useState<SchoolStats>({
+    total_registered: 0,
+    active_schools: 0,
+    inactive_schools: 0,
+    program_coverage: 0,
+  });
 
   // Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -84,6 +92,27 @@ export default function SchoolsPage() {
     fetchSchools();
   }, [fetchSchools]);
 
+  // Fetch global municipal statistics (independent of active table filters)
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await schoolService.getSchoolStats();
+      setStats(data);
+    } catch (err: unknown) {
+      console.error("Failed to load school statistics:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Reset filters and search
+  const handleResetFilters = useCallback(() => {
+    setSearch("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  }, []);
+
   // Handle Form Submit (Add or Edit)
   const handleFormSubmit = async (data: CreateSchoolDto | UpdateSchoolDto) => {
     setIsSubmitting(true);
@@ -101,7 +130,7 @@ export default function SchoolsPage() {
       }
       setIsFormModalOpen(false);
       setSchoolToEdit(null);
-      await fetchSchools();
+      await Promise.all([fetchSchools(), fetchStats()]);
     } finally {
       setIsSubmitting(false);
     }
@@ -120,7 +149,7 @@ export default function SchoolsPage() {
       );
       setIsStatusModalOpen(false);
       setSchoolToToggleStatus(null);
-      await fetchSchools();
+      await Promise.all([fetchSchools(), fetchStats()]);
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Failed to update school status.";
@@ -129,10 +158,6 @@ export default function SchoolsPage() {
       setIsStatusLoading(false);
     }
   };
-
-  // Compute summary stats
-  const activeCount = schools.filter((s) => s.status === "active").length;
-  const inactiveCount = schools.filter((s) => s.status === "inactive").length;
 
   return (
     <div className="space-y-6">
@@ -185,51 +210,74 @@ export default function SchoolsPage() {
       )}
 
       {error && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800 animate-in fade-in">
+        <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-800 animate-in fade-in sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
             <span>
-              <strong>Error:</strong> {error}
+              {error.includes("401")
+                ? "Council session authorization required. Please reconnect your coordinator session."
+                : error}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900 cursor-pointer"
-            aria-label="Dismiss error"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {error.includes("401") ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setError(null);
+                  try {
+                    const res = await schoolService.getSchools();
+                    if (res) {
+                      await Promise.all([fetchSchools(), fetchStats()]);
+                    }
+                  } catch {
+                    window.location.href = "/login";
+                  }
+                }}
+                className="rounded-md bg-[#800000] px-3 py-1 text-xs font-semibold text-white shadow-xs hover:bg-[#680000] transition cursor-pointer"
+              >
+                Reconnect Session
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-red-700 hover:text-red-900 cursor-pointer p-1"
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* Summary KPI Cards - Uniform borders, shadows and styling */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Total Registered"
-          value={totalCount}
+          label="Total Registered Schools"
+          value={stats.total_registered}
           description="Institutions recorded in Balangoda municipal registry"
           icon={<SchoolIcon className="h-5 w-5" />}
           variant="default"
         />
         <StatCard
-          label="Active Participants"
-          value={activeCount}
+          label="Active Schools"
+          value={stats.active_schools}
           description="Eligible for ongoing waste collection logging"
           icon={<CheckCircle2 className="h-5 w-5" />}
           variant="success"
         />
         <StatCard
-          label="Inactive / Suspended"
-          value={inactiveCount}
+          label="Inactive Schools"
+          value={stats.inactive_schools}
           description="Temporarily paused from waste points accrual"
           icon={<PauseCircle className="h-5 w-5" />}
           variant="warning"
         />
         <StatCard
           label="Program Coverage"
-          value="100%"
-          description="Balangoda Urban Council municipal educational zone"
+          value={`${stats.program_coverage}%`}
+          description="Balangoda active participation coverage rate"
           icon={<ShieldCheck className="h-5 w-5" />}
           variant="info"
         />
@@ -253,6 +301,7 @@ export default function SchoolsPage() {
         totalPages={totalPages}
         totalCount={totalCount}
         onPageChange={(p) => setCurrentPage(p)}
+        onResetFilters={handleResetFilters}
         onViewDetails={(school) => {
           setSelectedSchool(school);
           setIsDetailsModalOpen(true);
