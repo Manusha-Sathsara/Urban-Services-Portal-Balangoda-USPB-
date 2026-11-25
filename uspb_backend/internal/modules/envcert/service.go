@@ -1,11 +1,15 @@
 package envcert
 
-import "errors"
+import (
+	"errors"
+	"log"
+)
 
 type Service interface {
 	ListCerts() ([]EnvironmentalCert, error)
 	GetCert(id string) (*EnvironmentalCert, error)
 	CreateCert(cert *EnvironmentalCert) error
+	ProcessMonthlyExpiryCheck() (int64, error)
 }
 
 type service struct {
@@ -35,4 +39,14 @@ func (s *service) CreateCert(cert *EnvironmentalCert) error {
 	}
 
 	return s.repo.Create(cert)
+}
+
+func (s *service) ProcessMonthlyExpiryCheck() (int64, error) {
+	count, err := s.repo.MarkExpiredCerts()
+	if err != nil {
+		log.Printf("[ERROR] Environmental certificate expiry check failed: %v", err)
+		return 0, err
+	}
+	log.Printf("[INFO] Environmental certificate expiry check completed: %d certificate(s) flagged as EXPIRED", count)
+	return count, nil
 }
