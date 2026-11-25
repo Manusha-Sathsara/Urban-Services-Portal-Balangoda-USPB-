@@ -1,191 +1,154 @@
 # Urban Services Portal Balangoda (USPB)
-## School Waste Rewards Management — Current Version & Functions Guide
+## School Waste Rewards Management — Subsystem Architecture & Functional Guide
 
 ---
 
 ## 1. Executive Summary: What is this Version About?
 
-This current version on branch `feat/praneepa-school-rewards` represents the audited, robust, and production-ready **School Management** feature, which serves as the foundational core of the **School Waste Rewards Management** module for the **Balangoda Urban Council (BUC)** in Sri Lanka.
+This version on branch `feat/praneepa-school-rewards` implements the first two core modules of the **School Waste Rewards Management** system for **Balangoda Urban Council (BUC)** in Sri Lanka:
 
-The municipal portal allows authorized council personnel (e.g., **Eco-Rewards Coordinators**, **Garbage Supervisors**, and **System Administrators**) to onboard local schools into the municipal waste segregation reward initiative, maintain accurate institutional records, track participation status, inspect school profiles, and monitor council-wide participation metrics.
+1. **School Management Module**: Onboards participating schools, records codes and locations, tracks operational status (active/inactive), and provides council-wide coverage metrics.
+2. **Waste Category Management Module**: Defines authorized recyclable categories (e.g., Plastic & PET, Paper & Cardboard, Metal Cans, Glass, E-Waste), standard measurement units (`kg`), baseline points rates, and maintains an **immutable, auditable rate history**.
 
----
-
-## 2. Core Functional Capabilities
-
-```
-+-----------------------------------------------------------------------------------------+
-|                  Balangoda Urban Council - School Rewards Management                     |
-+-----------------------------------------------------------------------------------------+
-|                                                                                         |
-|  [ Stat Cards - Global Municipal Metrics (Independent of Active Table Filters) ]        |
-|  * Total Registered Schools: 5              * Active Schools: 3                         |
-|  * Inactive Schools: 2                      * Program Coverage: 60.0%                   |
-|                                                                                         |
-|  [ Action Bar ]                                                                         |
-|  [ Search by name, code or address... (X) ]  [ Status: All / Active / Inactive ]         |
-|  [ + Register New School Button ]                                                       |
-|                                                                                         |
-|  [ Active Filters: Query: "ananda" (1 result found) | Reset all filters ]               |
-|                                                                                         |
-|  [ Schools Data Table with Column Sorting ]                                             |
-|  -------------------------------------------------------------------------------------  |
-|  School Code ^ | Institution Name ^ | Postal Address | Contact | Status ^ | Actions     |
-|  -------------------------------------------------------------------------------------  |
-|  BAMCC-001     | Balangoda Ananda.. | Barnes Rat...  | 045-..  | [ACTIVE] | [O] [/] [||]|
-|  SACB-002      | St. Agnes Convent  | Convent Rd     | 045-..  | [ACTIVE] | [O] [/] [||]|
-|  MMV-003       | Meddakanda M.V.    | Meddakanda     | 045-..  | [ACTIVE] | [O] [/] [||]|
-|  JNC-004       | Jeilani Nat. Coll. | Colombo Rd     | 045-..  | [INACT.] | [O] [/] [>] |
-|  BBLC-005      | Balangoda Buddhist | Station Rd     | 045-..  | [INACT.] | [O] [/] [>] |
-+-----------------------------------------------------------------------------------------+
-```
-
-### Feature 1: Global Municipal Statistics & Program Coverage
-- **Dedicated Global Metrics Endpoint**: `GET /api/v1/schools/stats` aggregates counts across the entire registry, completely separate from active table filters or pagination.
-- **Independent KPI Cards**: Searching for a school or filtering by status in the data table **never** distorts the council's global statistics.
-- **Dynamic Program Coverage Calculation**:
-  $$\text{Program Coverage} = \left(\frac{\text{Active Schools}}{\text{Total Registered Schools}}\right) \times 100$$
-  *(e.g., 3 active out of 5 registered = 60.0%; if 0 schools are registered, safely displays 0%)*.
-- **Standardized Council Nomenclature**:
-  - `Total Registered Schools`
-  - `Active Schools`
-  - `Inactive Schools`
-  - `Program Coverage`
-
-### Feature 2: School Listing, Sorting & Search Feedback
-- **Live Parameterized Search**: Real-time querying across school name, unique school code, postal address, and contact number.
-- **Search Feedback Bar**: Clear visual badge showing active query and count of matching records (e.g., *"Query: 'ananda' (1 result found)"*) with an instant clear button (`X`).
-- **Interactive Column Sorting**: Clickable column headers on `School Code`, `Institution Name`, and `Status` toggling ascending (`▲`), descending (`▼`), or default order.
-- **Two-Tier Empty States**:
-  - *Filtered empty state*: Displays *"No Matching Schools Found"* with a one-click *"Reset Search & Filters"* button.
-  - *Clean initial state*: Displays *"No Schools Registered Yet"* with a *"Register New School"* call to action.
-- **Accessible Action Controls**: Every icon action button features explicit `title` tooltips and descriptive `aria-label` attributes (`"View details for..."`, `"Edit..."`, `"Deactivate..."`).
-
-### Feature 3: School Registration (Add School)
-- **Modal Form Interface**: Controlled dialog for registering new institutions.
-- **Two-Tier Validation**:
-  - *Client-side*: Real-time validation for non-empty name (2-255 chars), valid alphanumeric/hyphen code (2-50 chars), and phone number format.
-  - *Server-side*: Validates payload structure, sanitizes whitespace, and checks regex constraints.
-- **Code Collision Prevention**: Database-level `UNIQUE` constraint on `school_code`, returning HTTP `409 Conflict` if duplicate code is submitted.
-
-### Feature 4: School Information Editing
-- **Non-Destructive Updates**: Edit modal pre-populates existing record and updates name, address, contact, and code without modifying audit histories or unrelated records.
-- **Code Uniqueness Verification**: Prevents updating a code to conflict with an existing institution.
-
-### Feature 5: School Details & Audit Inspection
-- **Institutional Profile Modal**: Modal inspecting official address, telephone number, registration timestamp (`created_at`), and last update timestamp (`updated_at`).
-- **Phase 2 Student Statistics Placeholder**: Displays an informative notice explaining that student roster and individual badge tracking will automatically populate in Phase 2, avoiding fabricated numbers.
-
-### Feature 6: Activation & Deactivation (Status Management)
-- **Quick Status Toggle**: Single-click activation or deactivation directly from the table row.
-- **Confirmation Safety Dialog**: Reversible modal requiring explicit confirmation before updating operational status.
-- **Historical Data Protection**: Prevents permanent hard deletion if a school has associated students, collection records, or financial history (`409 Conflict`). Deletions are strictly restricted to the `ADMIN` role.
+Both modules strictly adhere to the monorepo architecture:
+- Frontend: `uspb_frontend` (Next.js 16, TypeScript, Tailwind CSS, Lucide icons, Balangoda maroon branding `#800000`).
+- Backend: `uspb_backend` (Go, Fiber v2, SQLx, PostgreSQL with seamless in-memory fallback for local development).
 
 ---
 
-## 3. Technology Stack & Architectural Overview
+## 2. Waste Category Management: Core Features
 
-```mermaid
-graph TD
-    Client["Web Browser (User / Council Officer)"]
-    
-    subgraph Frontend["uspb_frontend (Next.js 16.4 + React 19 + TypeScript)"]
-        UI["Tailwind CSS v4 + Lucide Monochrome Icons"]
-        Components["Components (SchoolTable, Modals, StatCard)"]
-        ClientService["School API Service (Axios with Bearer Auth)"]
-    end
-    
-    subgraph Backend["uspb_backend (Go 1.27 + Fiber v2 REST)"]
-        Router["Fiber REST Router (/api/v1)"]
-        AuthMiddleware["JWT Middleware & Strict RBAC"]
-        Handler["SchoolHandler (HTTP Binding & Validation)"]
-        Service["SchoolService (Business Logic & Stats Calculation)"]
-        Repo["SchoolRepository (SQLx Parameterized Queries)"]
-        MemRepo["SchoolMemoryRepo (Dev Fallback Store)"]
-    end
-    
-    subgraph Database["PostgreSQL 18 (Local / Government Server)"]
-        SchoolsTable["schools table (id, school_name, school_code, status, timestamps)"]
-        Migrations["Migrations (000001, 000002, 000003_seed_schools)"]
-    end
+```
++---------------------------------------------------------------------------------------------------------+
+|                  Balangoda Urban Council - Waste Category Management                                    |
++---------------------------------------------------------------------------------------------------------+
+|                                                                                                         |
+|  [ Stat Cards - Global Municipal Metrics ]                                                              |
+|  * Total Categories: 6                      * Active Categories: 5                                      |
+|  * Inactive Categories: 1                   * Average Points Rate: 10.0 pts/kg                          |
+|                                                                                                         |
+|  [ Action Bar ]                                                                                         |
+|  [ Search by name or description... (X) ]  [ Status: All / Active / Inactive ]   [ Refresh (R) ]         |
+|  [ + Register New Category Button ]                                                                     |
+|                                                                                                         |
+|  [ Waste Categories Table with Column Sorting ]                                                         |
+|  -----------------------------------------------------------------------------------------------------  |
+|  Waste Category ^       | Unit      | Points Rate ^   | Status ^   | Actions                            |
+|  -----------------------------------------------------------------------------------------------------  |
+|  Plastic & PET Bottles  | per kg    | 12.0 pts / kg   | [ACTIVE]   | [Eye] [Edit] [Rate] [Hist] [Pause] |
+|  Paper & Cardboard      | per kg    | 5.0 pts / kg    | [ACTIVE]   | [Eye] [Edit] [Rate] [Hist] [Pause] |
+|  Metal & Aluminium Cans | per kg    | 15.0 pts / kg   | [ACTIVE]   | [Eye] [Edit] [Rate] [Hist] [Pause] |
+|  Glass Bottles          | per kg    | 3.0 pts / kg    | [ACTIVE]   | [Eye] [Edit] [Rate] [Hist] [Pause] |
+|  Electronic Waste       | per kg    | 25.0 pts / kg   | [ACTIVE]   | [Eye] [Edit] [Rate] [Hist] [Pause] |
+|  Coconut Shells/Biomass | per kg    | 2.0 pts / kg    | [INACTIVE] | [Eye] [Edit] [Rate] [Hist] [Play]  |
++---------------------------------------------------------------------------------------------------------+
+```
 
-    Client --> UI
-    UI --> Components
-    Components --> ClientService
-    ClientService -->|HTTP REST on :8081| Router
-    Router --> AuthMiddleware
-    AuthMiddleware --> Handler
-    Handler --> Service
-    Service --> Repo
-    Service -.->|Fallback in local dev when DB unconfigured| MemRepo
-    Repo -->|Parameterized SQL| SchoolsTable
+### 1. Category Listing, Filtering & Sorting
+- **Table view**: Lists category name, detailed description, measurement unit, active points rate, and status.
+- **Search bar**: Case-insensitive substring search matching category names and descriptions.
+- **Status tabs**: Quick filters for `All`, `Active`, and `Inactive`.
+- **Column sorting**: Sort ascending and descending on category name, unit, points rate, and status.
+- **Pagination**: 10 items per page with clear range indication.
+
+### 2. Category Registration (Add Category)
+- **Form fields**: Category name (required, unique), description, measurement unit (default `kg`), initial points per unit (required, > 0), and initial status.
+- **Validation**: Checked both in React/TypeScript and enforced on the Go Fiber backend.
+- **Initial Rate History**: Automatically generates the initial baseline rate record in `category_rate_history` with the officer's credentials.
+
+### 3. Non-Destructive Category Editing
+- **Metadata updates**: Allows updating name, description, and status.
+- **Measurement Unit Lock**: If a category has already been recorded in waste collection history (`school_rewards`), changing its unit is blocked (`409 Conflict`) to prevent corrupting physical weight logs.
+
+### 4. Rate History & Auditing (Critical Requirement)
+- **Dedicated "Revise Rate" Modal**: When municipal supervisors change the point rate:
+  1. The previous rate record in `category_rate_history` has its `effective_to` set to `NOW()`.
+  2. A new rate record is inserted with `effective_from = NOW()`, `effective_to = NULL`, the new rate, revision reason, and operator identity.
+  3. The category's `current_points_per_unit` is updated.
+- **Chronological Audit Timeline Modal**: Clickable from table or details to inspect all past rates, who approved them, and why.
+- **Past Collections Frozen**: Rate changes only apply to future collections. Past collections permanently preserve the exact rate applied when they were logged and are **never** recalculated.
+
+### 5. Category Activation & Deactivation
+- **Direct status toggling**: Single-click activation / deactivation with a confirmation safety modal.
+- **Visibility rule**: Teachers can only view and select active categories (`GET /api/v1/categories/active`). Inactive categories are completely hidden from waste logging dropdowns.
+- **Delete protection**: Permanent hard deletion is forbidden if collections exist; deactivation must be used instead.
+
+---
+
+## 3. Database Architecture & Migrations
+
+Created in migration `000004_create_waste_categories_tables.up.sql`:
+
+```sql
+-- 1. Main categories table
+CREATE TABLE IF NOT EXISTS garbage_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    measurement_unit VARCHAR(20) NOT NULL DEFAULT 'kg',
+    current_points_per_unit NUMERIC(10, 2) NOT NULL CHECK (current_points_per_unit > 0),
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Audit rate history table
+CREATE TABLE IF NOT EXISTS category_rate_history (
+    id SERIAL PRIMARY KEY,
+    category_id INT NOT NULL REFERENCES garbage_categories(id) ON DELETE CASCADE,
+    points_per_unit NUMERIC(10, 2) NOT NULL CHECK (points_per_unit > 0),
+    effective_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMP WITH TIME ZONE,
+    reason TEXT NOT NULL,
+    changed_by VARCHAR(150) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cat_rate_history_cat_id ON category_rate_history(category_id);
 ```
 
 ---
 
-## 4. Backend REST API Endpoints Reference
+## 4. REST API Endpoint Reference
 
-All endpoints are hosted on port `8081` under the `/api/v1` namespace:
+All endpoints are prefixed with `/api/v1` and require `Authorization: Bearer <token>`.
 
-| Method | Route | Description | Auth Required | Authorized Roles | Status Codes |
-|:---|:---|:---|:---:|:---|:---:|
-| `GET` | `/api/v1/health` | Healthcheck and service uptime probe | No | Public | `200` |
-| `GET` | `/api/v1/auth/demo-token` | Generates a signed JWT session *(disabled in production)* | No | Public *(Dev only)* | `200`, `403` |
-| `POST` | `/api/v1/auth/login` | Authenticates council user with username & password | No | Public | `200`, `400`, `401` |
-| `GET` | `/api/v1/schools/stats` | Global council metrics (`total`, `active`, `inactive`, `coverage`) | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `200`, `401` |
-| `GET` | `/api/v1/schools` | Lists schools with search, status filters, and pagination | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `200`, `401` |
-| `POST` | `/api/v1/schools` | Registers a new school with unique code validation | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `201`, `400`, `409` |
-| `GET` | `/api/v1/schools/:id` | Fetches a single school by ID | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `200`, `404` |
-| `PUT` | `/api/v1/schools/:id` | Updates school details | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `200`, `400`, `404`, `409` |
-| `PATCH` | `/api/v1/schools/:id/status`| Toggles school status (`active` / `inactive`) | **Yes** (JWT) | `ADMIN`, `GARBAGE_SUPERVISOR` | `200`, `400`, `404` |
-| `DELETE`| `/api/v1/schools/:id` | Soft-deletes or blocks if records exist | **Yes** (JWT) | **`ADMIN` strictly** | `200`, `403`, `409` |
-
----
-
-## 5. Security & Database Reliability Enhancements
-
-1. **Production Guard on Demo Tokens**:
-   - `GET /api/v1/auth/demo-token` checks `APP_ENV`. In `production` or `prod`, it returns `403 Forbidden` unless explicitly permitted with `ENABLE_DEMO_AUTH=true`.
-2. **Strict RBAC for Deletions**:
-   - `DELETE /schools/:id` requires the `ADMIN` role. Supervisors attempting deletion receive `403 Forbidden`.
-3. **Database Failure Handling**:
-   - In production (`APP_ENV=production`), PostgreSQL connection failure aborts server boot with `log.Fatalf` to prevent data loss.
-   - In local development without configured DB credentials, the system logs clear warnings and boots with the in-memory fallback.
-4. **Data Consistency**:
-   - Migration `000003_seed_schools.up.sql` seeds PostgreSQL with the exact same 5 Balangoda central institutions that populate the in-memory store.
+| Method | Endpoint | Allowed Roles | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/categories` | `ADMIN`, `GARBAGE_SUPERVISOR` | Filtered, sorted, paginated category list |
+| `GET` | `/categories/active` | `TEACHER`, `GARBAGE_SUPERVISOR`, `ADMIN` | Active categories for collection dropdowns |
+| `GET` | `/categories/stats` | `ADMIN`, `GARBAGE_SUPERVISOR` | KPI statistics across categories |
+| `GET` | `/categories/:id` | `ADMIN`, `GARBAGE_SUPERVISOR` | Single category details |
+| `GET` | `/categories/:id/rate-history` | `ADMIN`, `GARBAGE_SUPERVISOR` | Full rate change history timeline |
+| `POST` | `/categories` | `ADMIN`, `GARBAGE_SUPERVISOR` | Register new category with baseline rate |
+| `PUT` | `/categories/:id` | `ADMIN`, `GARBAGE_SUPERVISOR` | Edit metadata (unit locked if used) |
+| `PATCH` | `/categories/:id/status` | `ADMIN`, `GARBAGE_SUPERVISOR` | Toggle active / inactive status |
+| `PATCH` | `/categories/:id/rate` | `ADMIN`, `GARBAGE_SUPERVISOR` | Revise point rate with audit reason |
+| `DELETE` | `/categories/:id` | `ADMIN` | Hard delete (blocked if collections exist) |
 
 ---
 
-## 6. Official Seeded Balangoda Schools
+## 5. Verification & Test Results
 
-| ID | School Code | Institution Name | Status | Telephone | Official Address |
-|:---:|:---|:---|:---:|:---|:---|
-| 1 | `BAMCC-001` | Balangoda Ananda Maithreya Central College | `active` | 045-2287234 | Barnes Ratwatte Mawatha, Balangoda |
-| 2 | `SACB-002` | St. Agnes Convent Balangoda | `active` | 045-2287512 | Convent Road, Balangoda |
-| 3 | `MMV-003` | Meddakanda Maha Vidyalaya | `active` | 045-2288110 | Meddakanda, Balangoda |
-| 4 | `JNC-004` | Jeilani National College | `inactive` | 045-2289400 | Colombo Road, Balangoda |
-| 5 | `BBLC-005` | Balangoda Buddhist Ladies College | `inactive` | 045-2289890 | Station Road, Balangoda |
+### 1. Backend Go Test Suite
+```bash
+go test -v ./internal/modules/schoolrewards
+```
+- `TestCategoryService_CreateCategory` — **PASS**
+- `TestCategoryService_CreateCategory/duplicate_name_rejection` — **PASS**
+- `TestCategoryService_CreateCategory/invalid_points_rate_rejection` — **PASS**
+- `TestCategoryService_UpdateRate_AndHistoryPreservation` — **PASS**
+- `TestCategoryService_StatusToggle` — **PASS**
+- `TestCategoryService_UnitProtectionAndDeletionRules` — **PASS**
+- `TestCategoryService_Stats` — **PASS**
+- All 11 School Management tests — **PASS**
+- **Result**: `ok github.com/BalangodaUC/uspb_backend/internal/modules/schoolrewards` (0 failures).
 
----
-
-## 7. Key File Map
-
-### Frontend (`uspb_frontend/`)
-- [page.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/app/(dashboard)/schools/page.tsx): Main dashboard, coordinates global stats with `fetchStats()`, handles modals and filters.
-- [SchoolTable.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/components/schools/SchoolTable.tsx): Table with column sorting, search feedback bar, clear buttons, and accessible actions.
-- [SchoolFormModal.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/components/schools/SchoolFormModal.tsx): Add / Edit modal dialog with real-time field validation.
-- [SchoolDetailsModal.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/components/schools/SchoolDetailsModal.tsx): View school profile modal with audit timestamps and Phase 2 student stats note.
-- [StatusConfirmModal.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/components/schools/StatusConfirmModal.tsx): Status change confirmation dialog.
-- [StatCard.tsx](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/components/shared/StatCard.tsx): Uniform metric cards with soft styling and Lucide icons.
-- [schoolService.ts](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/services/schoolService.ts): Axios service client including `getSchoolStats()`.
-- [index.ts (types)](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_frontend/src/types/index.ts): TypeScript interfaces for `School`, `SchoolStats`, `SchoolListResult`, etc.
-
-### Backend (`uspb_backend/`)
-- [main.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/cmd/server/main.go): Server entry point, database connection fail-fast logic, router wiring.
-- [school_model.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_model.go): Data domain structs and `SchoolStats`.
-- [school_handler.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_handler.go): Fiber handlers for schools and `GetStats`.
-- [school_service.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_service.go): Business logic, uniqueness checks, stats calculation.
-- [school_repository.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_repository.go): SQLx queries including `GetStats()` SQL aggregation.
-- [school_memory_repo.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_memory_repo.go): In-memory store with `GetStats()` and 5 authentic Balangoda seeds.
-- [school_test.go](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/internal/modules/schoolrewards/school_test.go): 10 unit and integration tests verifying creation, validation, duplicate prevention, stats calculation, and RBAC.
-- [000003_seed_schools.up.sql](file:///e:/Dev/Urban-Services-Portal-Balangoda-USPB-/uspb_backend/migrations/000003_seed_schools.up.sql): Migration seeding schools into PostgreSQL.
+### 2. Frontend Production Build
+```bash
+npm run build
+```
+- Next.js Turbopack compiler — **Compiled in 1399ms**
+- TypeScript typecheck — **Clean with 0 errors**
+- Route `/categories` — **Prerendered as static content**
+- Dev server running on `http://localhost:3000/categories` — **HTTP 200 OK**

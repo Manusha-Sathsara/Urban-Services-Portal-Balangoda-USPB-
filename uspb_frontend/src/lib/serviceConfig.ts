@@ -142,9 +142,8 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
     },
     {
       name: "Waste Categories",
-      href: "#",
+      href: "/categories",
       icon: "Recycle",
-      badge: "Soon",
     },
     {
       name: "Redemption & Payouts",
@@ -243,6 +242,7 @@ const SERVICE_ROUTES: Array<{ prefix: string; config: ServiceConfig }> = [
   { prefix: "/garbage-fees", config: GARBAGE_FEES_SERVICE_CONFIG },
   { prefix: "/environmental", config: ENVIRONMENTAL_SERVICE_CONFIG },
   { prefix: "/schools", config: SCHOOLS_SERVICE_CONFIG },
+  { prefix: "/categories", config: SCHOOLS_SERVICE_CONFIG },
   { prefix: "/admin", config: ADMIN_SERVICE_CONFIG },
 ];
 

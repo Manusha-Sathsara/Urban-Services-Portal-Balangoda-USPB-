@@ -104,3 +104,63 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+// Waste Category Management Domain Models
+export interface WasteCategory {
+  id: number;
+  name: string;
+  description: string;
+  measurement_unit: string;
+  current_points_per_unit: number;
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+  total_collections?: number;
+}
+
+export interface CategoryRateHistory {
+  id: number;
+  category_id: number;
+  points_per_unit: number;
+  effective_from: string;
+  effective_to?: string | null;
+  reason: string;
+  changed_by: string;
+  created_at: string;
+}
+
+export interface CreateCategoryDto {
+  name: string;
+  description: string;
+  measurement_unit: string;
+  points_per_unit: number;
+  status?: "active" | "inactive";
+}
+
+export interface UpdateCategoryDto {
+  name: string;
+  description: string;
+  measurement_unit: string;
+  status: "active" | "inactive";
+}
+
+export interface UpdateRateDto {
+  points_per_unit: number;
+  reason: string;
+}
+
+export interface CategoryListResult {
+  categories: WasteCategory[];
+  total_count: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface CategoryStats {
+  total_categories: number;
+  active_categories: number;
+  inactive_categories: number;
+  average_rate: number;
+}
+

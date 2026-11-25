@@ -93,6 +93,18 @@ func main() {
 	schoolHandler := schoolrewards.NewSchoolHandler(schoolService)
 	schoolHandler.RegisterRoutes(api)
 
+	// 4.3. Waste Category Management repository & handler
+	var categoryRepo schoolrewards.CategoryRepository
+	if db != nil {
+		categoryRepo = schoolrewards.NewCategoryRepository(db)
+	} else {
+		log.Println("[INFO] PostgreSQL not connected: running Category module with in-memory repository for local development")
+		categoryRepo = schoolrewards.NewMemoryCategoryRepository()
+	}
+	categoryService := schoolrewards.NewCategoryService(categoryRepo)
+	categoryHandler := schoolrewards.NewCategoryHandler(categoryService)
+	categoryHandler.RegisterRoutes(api)
+
 	// Register other module handlers if db is initialized
 	if db != nil {
 		gfRepo := garbagefee.NewRepository(db)
