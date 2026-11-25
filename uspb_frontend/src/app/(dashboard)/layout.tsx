@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Header from "@/components/layouts/Header";
 import Sidebar from "@/components/layouts/Sidebar";
 
@@ -6,6 +9,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/environmental")) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <Header />
