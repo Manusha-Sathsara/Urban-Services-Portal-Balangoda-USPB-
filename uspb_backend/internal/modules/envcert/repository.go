@@ -29,6 +29,7 @@ type Repository interface {
 	GetAll() ([]EnvironmentalCert, error)
 	GetByID(id string) (*EnvironmentalCert, error)
 	Create(cert *EnvironmentalCert) error
+	MarkExpiredCerts() (int64, error)
 }
 
 type repository struct {
@@ -89,4 +90,18 @@ func (r *repository) Create(cert *EnvironmentalCert) error {
 		cert.Status,
 		cert.CreatedBy,
 	).Scan(&cert.ID, &cert.CreatedAt, &cert.UpdatedAt)
+}
+
+func (r *repository) MarkExpiredCerts() (int64, error) {
+	query := `
+		UPDATE env_cert_businesses
+		SET status = 'EXPIRED', updated_at = NOW()
+		WHERE status = 'APPROVED'
+		  AND expiry_date IS NOT NULL
+		  AND expiry_date < NOW()`
+	result, err := r.db.Exec(query)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
