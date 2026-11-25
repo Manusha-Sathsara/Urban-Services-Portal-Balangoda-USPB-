@@ -170,6 +170,11 @@ export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
       icon: "🛡️",
     },
     {
+      name: "Inspection Approvals",
+      href: "/admin-inspection",
+      icon: "📋", 
+    },
+    {
       name: "School Rewards",
       href: "/schools",
       icon: "🎓",
@@ -202,6 +207,11 @@ export const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
       name: "Environmental Certs",
       href: "/environmental",
       icon: "🛡️",
+    },
+    {
+      name: "Inspection Approvals",
+      href: "/admin-inspection",
+      icon: "📋", 
     },
     {
       name: "School Rewards",
