@@ -105,6 +105,21 @@ func main() {
 	categoryHandler := schoolrewards.NewCategoryHandler(categoryService)
 	categoryHandler.RegisterRoutes(api)
 
+	// 4.4. Badge Configuration, Eligibility, and Award Management repository & handler
+	var badgeRepo schoolrewards.BadgeRepository
+	var pointsProvider schoolrewards.PointsLedgerProvider
+	if db != nil {
+		badgeRepo = schoolrewards.NewBadgeRepository(db)
+		pointsProvider = schoolrewards.NewSQLPointsLedgerProvider(db)
+	} else {
+		log.Println("[INFO] PostgreSQL not connected: running Badge module with in-memory repository for local development")
+		badgeRepo = schoolrewards.NewMemoryBadgeRepository()
+		pointsProvider = schoolrewards.NewMemoryPointsLedgerProvider()
+	}
+	badgeService := schoolrewards.NewBadgeService(badgeRepo, pointsProvider)
+	badgeHandler := schoolrewards.NewBadgeHandler(badgeService)
+	badgeHandler.RegisterRoutes(api)
+
 	// Register other module handlers if db is initialized
 	if db != nil {
 		gfRepo := garbagefee.NewRepository(db)

@@ -11,9 +11,10 @@ import (
 
 // JWTClaims represents claims stored inside the JWT token
 type JWTClaims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
-	Email  string `json:"email"`
+	UserID   string `json:"user_id"`
+	Role     string `json:"role"`
+	Email    string `json:"email"`
+	SchoolID *int   `json:"school_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -55,6 +56,9 @@ func JWTMiddleware() fiber.Handler {
 		c.Locals("user_id", claims.UserID)
 		c.Locals("role", claims.Role)
 		c.Locals("email", claims.Email)
+		if claims.SchoolID != nil {
+			c.Locals("school_id", *claims.SchoolID)
+		}
 
 		return c.Next()
 	}

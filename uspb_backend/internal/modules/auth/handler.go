@@ -100,7 +100,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		}
 	}
 
-	token, err := generateToken(userID, role, username)
+	token, err := generateToken(userID, role, username, user.SchoolID)
 	if err != nil {
 		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to generate authentication token: "+err.Error())
 	}
@@ -134,7 +134,13 @@ func (h *Handler) DemoToken(c *fiber.Ctx) error {
 		role = "ADMIN"
 	}
 
-	token, err := generateToken("1", role, "admin@balangoda.gov.lk")
+	var schoolIDPtr *int
+	if role == "TEACHER" {
+		sid := c.QueryInt("school_id", 1)
+		schoolIDPtr = &sid
+	}
+
+	token, err := generateToken("1", role, "admin@balangoda.gov.lk", schoolIDPtr)
 	if err != nil {
 		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to create demo token: "+err.Error())
 	}
@@ -144,16 +150,17 @@ func (h *Handler) DemoToken(c *fiber.Ctx) error {
 	})
 }
 
-func generateToken(userID, role, email string) (string, error) {
+func generateToken(userID, role, email string, schoolID *int) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "super_secret_key_change_in_production"
 	}
 
 	claims := middleware.JWTClaims{
-		UserID: userID,
-		Role:   role,
-		Email:  email,
+		UserID:   userID,
+		Role:     role,
+		Email:    email,
+		SchoolID: schoolID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
