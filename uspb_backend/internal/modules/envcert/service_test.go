@@ -122,3 +122,79 @@ func TestCreateCert_ValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateCert_DefaultStatusAndSuccess(t *testing.T) {
+	t.Run("sets default PENDING status when empty", func(t *testing.T) {
+		repo := &mockRepository{}
+		svc := NewService(repo)
+
+		cert := EnvironmentalCert{
+			BusinessName:     "Balangoda Bakers",
+			OwnerName:        "K. A. Perera",
+			OwnerNIC:         "198512345678",
+			ContactPhone:     "0771234567",
+			Address:          "No. 15, Main Street, Balangoda",
+			BusinessCategory: "Food & Hospitality",
+		}
+
+		if err := svc.CreateCert(&cert); err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if !repo.createCalled {
+			t.Fatalf("expected repository Create to be called")
+		}
+		if cert.Status != "PENDING" {
+			t.Errorf("expected default status PENDING, got %q", cert.Status)
+		}
+	})
+
+	t.Run("preserves explicit status when provided", func(t *testing.T) {
+		repo := &mockRepository{}
+		svc := NewService(repo)
+
+		cert := EnvironmentalCert{
+			BusinessName:     "Samanala Tea Factory",
+			OwnerName:        "R. M. Silva",
+			OwnerNIC:         "197945612390",
+			ContactPhone:     "0719876543",
+			Address:          "Rassagala Road, Balangoda",
+			BusinessCategory: "Manufacturing & Tea",
+			Status:           "APPROVED",
+		}
+
+		if err := svc.CreateCert(&cert); err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if cert.Status != "APPROVED" {
+			t.Errorf("expected status APPROVED to be preserved, got %q", cert.Status)
+		}
+	})
+}
+
+func TestProcessMonthlyExpiryCheck(t *testing.T) {
+	t.Run("returns count of newly expired certificates", func(t *testing.T) {
+		repo := &mockRepository{markExpiredCount: 3}
+		svc := NewService(repo)
+
+		count, err := svc.ProcessMonthlyExpiryCheck()
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if count != 3 {
+			t.Errorf("expected expired count 3, got %d", count)
+		}
+	})
+
+	t.Run("propagates repository error", func(t *testing.T) {
+		repo := &mockRepository{markExpiredErr: errors.New("db connection timeout")}
+		svc := NewService(repo)
+
+		count, err := svc.ProcessMonthlyExpiryCheck()
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		if count != 0 {
+			t.Errorf("expected count 0 on error, got %d", count)
+		}
+	})
+}
