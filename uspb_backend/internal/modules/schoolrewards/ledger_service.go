@@ -32,7 +32,7 @@ func resolveSchoolScope(actor ActorContext, requestedSchoolID *int) (*int, error
 	return requestedSchoolID, nil
 }
 
-func (s *LedgerService) ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]Student, error) {
+func (s *LedgerService) ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]SchoolStudent, error) {
 	scoped, err := resolveSchoolScope(actor, schoolFilter)
 	if err != nil {
 		return nil, err
@@ -40,11 +40,11 @@ func (s *LedgerService) ListStudents(ctx context.Context, actor ActorContext, sc
 	return s.repo.ListStudents(ctx, actor, scoped, strings.TrimSpace(search))
 }
 
-func (s *LedgerService) GetStudent(ctx context.Context, actor ActorContext, studentID int) (*Student, error) {
+func (s *LedgerService) GetStudent(ctx context.Context, actor ActorContext, studentID int) (*SchoolStudent, error) {
 	return s.repo.GetStudent(ctx, actor, studentID)
 }
 
-func (s *LedgerService) CreateStudent(ctx context.Context, actor ActorContext, req CreateStudentRequest) (*Student, error) {
+func (s *LedgerService) CreateStudent(ctx context.Context, actor ActorContext, req CreateStudentRequest) (*SchoolStudent, error) {
 	req.MembershipNo = strings.TrimSpace(req.MembershipNo)
 	req.FullName = strings.TrimSpace(req.FullName)
 	req.NameWithInitials = strings.TrimSpace(req.NameWithInitials)
@@ -69,7 +69,7 @@ func (s *LedgerService) CreateStudent(ctx context.Context, actor ActorContext, r
 	return s.repo.CreateStudent(ctx, actor, *scoped, req)
 }
 
-func (s *LedgerService) UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*Student, error) {
+func (s *LedgerService) UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*SchoolStudent, error) {
 	if studentID <= 0 {
 		return nil, fmt.Errorf("%w: invalid student_id", ErrValidation)
 	}

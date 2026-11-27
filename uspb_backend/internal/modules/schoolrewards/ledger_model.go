@@ -16,7 +16,7 @@ type ActorContext struct {
 	SchoolID *int
 }
 
-type Student struct {
+type SchoolStudent struct {
 	ID                    int       `db:"id" json:"id"`
 	SchoolID              int       `db:"school_id" json:"school_id"`
 	MembershipNo          string    `db:"membership_no" json:"membership_no"`
@@ -39,7 +39,7 @@ type Student struct {
 }
 
 // ComputeCardEligibility sets CompletedCards based on 1,000-point Sampath Kendraya card threshold.
-func (s *Student) ComputeCardEligibility() {
+func (s *SchoolStudent) ComputeCardEligibility() {
 	if s.CachedAvailablePoints >= RedemptionPointsCost {
 		s.CompletedCards = int(math.Floor(s.CachedAvailablePoints / RedemptionPointsCost))
 	} else {

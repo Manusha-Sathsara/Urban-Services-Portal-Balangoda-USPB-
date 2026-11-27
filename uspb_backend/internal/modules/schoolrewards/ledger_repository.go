@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	ErrStudentNotFound      = errors.New("student not found")
 	ErrCollectionNotFound   = errors.New("collection not found")
 	ErrPayoutNotFound       = errors.New("payout not found")
 	ErrInsufficientPoints   = errors.New("insufficient available points (minimum 1000.00 required)")
@@ -21,10 +20,10 @@ var (
 )
 
 type LedgerRepository interface {
-	ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]Student, error)
-	GetStudent(ctx context.Context, actor ActorContext, studentID int) (*Student, error)
-	CreateStudent(ctx context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*Student, error)
-	UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*Student, error)
+	ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]SchoolStudent, error)
+	GetStudent(ctx context.Context, actor ActorContext, studentID int) (*SchoolStudent, error)
+	CreateStudent(ctx context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*SchoolStudent, error)
+	UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*SchoolStudent, error)
 
 	RecordCollection(ctx context.Context, actor ActorContext, req RecordCollectionRequest, items []WasteCollectionItem, totalPoints float64) (*WasteCollection, error)
 	ListCollections(ctx context.Context, actor ActorContext, studentID *int) ([]WasteCollection, error)
@@ -54,8 +53,8 @@ func (r *PostgresLedgerRepository) rls(actor ActorContext) database.RLSContext {
 	}
 }
 
-func (r *PostgresLedgerRepository) ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]Student, error) {
-	var students []Student
+func (r *PostgresLedgerRepository) ListStudents(ctx context.Context, actor ActorContext, schoolFilter *int, search string) ([]SchoolStudent, error) {
+	var students []SchoolStudent
 	sf := 0
 	if schoolFilter != nil {
 		sf = *schoolFilter
@@ -83,8 +82,8 @@ func (r *PostgresLedgerRepository) ListStudents(ctx context.Context, actor Actor
 	return students, nil
 }
 
-func (r *PostgresLedgerRepository) GetStudent(ctx context.Context, actor ActorContext, studentID int) (*Student, error) {
-	var s Student
+func (r *PostgresLedgerRepository) GetStudent(ctx context.Context, actor ActorContext, studentID int) (*SchoolStudent, error) {
+	var s SchoolStudent
 	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &s, `
 			SELECT s.id, s.school_id, s.membership_no, s.full_name, s.name_with_initials,
@@ -107,8 +106,8 @@ func (r *PostgresLedgerRepository) GetStudent(ctx context.Context, actor ActorCo
 	return &s, nil
 }
 
-func (r *PostgresLedgerRepository) CreateStudent(ctx context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*Student, error) {
-	var s Student
+func (r *PostgresLedgerRepository) CreateStudent(ctx context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*SchoolStudent, error) {
+	var s SchoolStudent
 	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &s, `
 			INSERT INTO students (
@@ -130,8 +129,8 @@ func (r *PostgresLedgerRepository) CreateStudent(ctx context.Context, actor Acto
 	return &s, nil
 }
 
-func (r *PostgresLedgerRepository) UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*Student, error) {
-	var s Student
+func (r *PostgresLedgerRepository) UpdateStudent(ctx context.Context, actor ActorContext, studentID int, req UpdateStudentRequest) (*SchoolStudent, error) {
+	var s SchoolStudent
 	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
 		return tx.GetContext(ctx, &s, `
 			UPDATE students

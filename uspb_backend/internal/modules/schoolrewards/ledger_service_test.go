@@ -10,7 +10,7 @@ import (
 
 type memoryLedgerRepo struct {
 	mu           sync.Mutex
-	students     map[int]*Student
+	students     map[int]*SchoolStudent
 	collections  map[int]*WasteCollection
 	payouts      map[int]*RewardPayout
 	transactions []PointTransaction
@@ -21,7 +21,7 @@ type memoryLedgerRepo struct {
 
 func newMemoryLedgerRepo() *memoryLedgerRepo {
 	return &memoryLedgerRepo{
-		students:    make(map[int]*Student),
+		students:    make(map[int]*SchoolStudent),
 		collections: make(map[int]*WasteCollection),
 		payouts:     make(map[int]*RewardPayout),
 		colByKey:    make(map[string]int),
@@ -30,10 +30,10 @@ func newMemoryLedgerRepo() *memoryLedgerRepo {
 	}
 }
 
-func (m *memoryLedgerRepo) ListStudents(_ context.Context, actor ActorContext, schoolFilter *int, _ string) ([]Student, error) {
+func (m *memoryLedgerRepo) ListStudents(_ context.Context, actor ActorContext, schoolFilter *int, _ string) ([]SchoolStudent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var out []Student
+	var out []SchoolStudent
 	for _, s := range m.students {
 		if actor.Role == "TEACHER" && (actor.SchoolID == nil || s.SchoolID != *actor.SchoolID) {
 			continue
@@ -48,7 +48,7 @@ func (m *memoryLedgerRepo) ListStudents(_ context.Context, actor ActorContext, s
 	return out, nil
 }
 
-func (m *memoryLedgerRepo) GetStudent(_ context.Context, actor ActorContext, studentID int) (*Student, error) {
+func (m *memoryLedgerRepo) GetStudent(_ context.Context, actor ActorContext, studentID int) (*SchoolStudent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.students[studentID]
@@ -63,10 +63,10 @@ func (m *memoryLedgerRepo) GetStudent(_ context.Context, actor ActorContext, stu
 	return &cp, nil
 }
 
-func (m *memoryLedgerRepo) CreateStudent(_ context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*Student, error) {
+func (m *memoryLedgerRepo) CreateStudent(_ context.Context, actor ActorContext, schoolID int, req CreateStudentRequest) (*SchoolStudent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	s := &Student{
+	s := &SchoolStudent{
 		ID:           m.nextID,
 		SchoolID:     schoolID,
 		MembershipNo: req.MembershipNo,
@@ -81,7 +81,7 @@ func (m *memoryLedgerRepo) CreateStudent(_ context.Context, actor ActorContext, 
 	return &cp, nil
 }
 
-func (m *memoryLedgerRepo) UpdateStudent(_ context.Context, _ ActorContext, studentID int, req UpdateStudentRequest) (*Student, error) {
+func (m *memoryLedgerRepo) UpdateStudent(_ context.Context, _ ActorContext, studentID int, req UpdateStudentRequest) (*SchoolStudent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.students[studentID]

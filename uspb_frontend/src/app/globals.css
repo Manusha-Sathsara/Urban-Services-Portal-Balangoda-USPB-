@@ -33,7 +33,15 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-merriweather), Georgia, serif;
+  font-family: var(--font-inter), Arial, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+/* Hide Next.js developer indicator badge */
+nextjs-portal,
+[data-nextjs-toast],
+[data-nextjs-dev-tools-indicator] {
+  display: none !important;
 }
 
 /* Subtle micro-interactions on hover and click for cards and interactive elements */

@@ -129,16 +129,37 @@ export const ENVIRONMENTAL_SERVICE_CONFIG: ServiceConfig = {
  */
 export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
   key: "schools",
-  serviceName: "School Garbage Collection & Rewards",
+  serviceName: "School Waste Rewards Management",
   serviceSubtitle: "Health Division — Balangoda Urban Council",
-  roleTitle: "School Garbage Collection & Rewards Officer",
+  roleTitle: "Eco-Rewards Coordinator",
   defaultUserName: "Eco-Rewards Coordinator",
   navSectionLabel: "School Programme",
   navItems: [
     {
-      name: "School Green Rewards",
+      name: "School Management",
       href: "/schools",
-      icon: "🎓",
+      icon: "School",
+    },
+    {
+      name: "Waste Categories",
+      href: "/categories",
+      icon: "Recycle",
+    },
+    {
+      name: "Redemption & Payouts",
+      href: "#",
+      icon: "Gift",
+      badge: "Soon",
+    },
+    {
+      name: "Badge Management",
+      href: "/badges",
+      icon: "Award",
+    },
+    {
+      name: "Financial Reports",
+      href: "/financial-reports",
+      icon: "BarChart3",
     },
   ],
 };
@@ -224,6 +245,9 @@ const SERVICE_ROUTES: Array<{ prefix: string; config: ServiceConfig }> = [
   { prefix: "/garbage-fees", config: GARBAGE_FEES_SERVICE_CONFIG },
   { prefix: "/environmental", config: ENVIRONMENTAL_SERVICE_CONFIG },
   { prefix: "/schools", config: SCHOOLS_SERVICE_CONFIG },
+  { prefix: "/categories", config: SCHOOLS_SERVICE_CONFIG },
+  { prefix: "/badges", config: SCHOOLS_SERVICE_CONFIG },
+  { prefix: "/financial-reports", config: SCHOOLS_SERVICE_CONFIG },
   { prefix: "/admin", config: ADMIN_SERVICE_CONFIG },
 ];
 
