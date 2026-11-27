@@ -12,7 +12,12 @@ function isRolePermittedForPath(role: UserRole, pathname: string): boolean {
   if (pathname.startsWith("/admin")) return false;
   if (pathname.startsWith("/garbage-fees")) return role === "FEE_OFFICER";
   if (pathname.startsWith("/environmental")) return role === "ENV_OFFICER";
-  if (pathname.startsWith("/schools")) {
+  if (
+    pathname.startsWith("/schools") ||
+    pathname.startsWith("/categories") ||
+    pathname.startsWith("/badges") ||
+    pathname.startsWith("/financial-reports")
+  ) {
     return role === "TEACHER" || role === "GARBAGE_SUPERVISOR";
   }
   return true;

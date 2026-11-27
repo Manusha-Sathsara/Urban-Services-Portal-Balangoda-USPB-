@@ -136,6 +136,11 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
   navSectionLabel: "School Programme",
   navItems: [
     {
+      name: "Teacher Workspace",
+      href: "/schools/teacher",
+      icon: "Users",
+    },
+    {
       name: "School Management",
       href: "/schools",
       icon: "School",
@@ -146,12 +151,6 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
       icon: "Recycle",
     },
     {
-      name: "Redemption & Payouts",
-      href: "#",
-      icon: "Gift",
-      badge: "Soon",
-    },
-    {
       name: "Badge Management",
       href: "/badges",
       icon: "Award",
@@ -159,7 +158,7 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
     {
       name: "Financial Reports",
       href: "/financial-reports",
-      icon: "BarChart3",
+      icon: "FileSpreadsheet",
     },
   ],
 };
@@ -178,27 +177,27 @@ export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
     {
       name: "Overview",
       href: "/admin",
-      icon: "⚙️",
+      icon: "LayoutDashboard",
     },
     {
       name: "Staff Management",
       href: "/admin/staff",
-      icon: "👥",
+      icon: "Users",
     },
     {
       name: "Schools Registry",
       href: "/admin/schools",
-      icon: "🏫",
+      icon: "School",
     },
     {
       name: "Audit & Monitoring",
       href: "/admin/audit-logs",
-      icon: "🛡️",
+      icon: "ShieldCheck",
     },
     {
       name: "Settings & Security",
       href: "/admin/settings",
-      icon: "🔐",
+      icon: "Settings",
     },
   ],
 };
@@ -275,8 +274,8 @@ export function isNavItemActive(pathname: string | null | undefined, href: strin
   // Exact match
   if (pathname === href) return true;
 
-  // Admin Overview should only highlight on exact /admin
-  if (href === "/admin") return false;
+  // Admin Overview and Schools root should only highlight on exact match
+  if (href === "/admin" || href === "/schools") return false;
 
   // Handle base route (/garbage-fees) as active for dashboard
   if (

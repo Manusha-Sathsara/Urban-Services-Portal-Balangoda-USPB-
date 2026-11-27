@@ -10,7 +10,7 @@ export const dashboardByRole: Record<UserRole, string> = {
   FEE_OFFICER: "/garbage-fees",
   ENV_OFFICER: "/environmental",
   GARBAGE_SUPERVISOR: "/schools",
-  TEACHER: "/schools",
+  TEACHER: "/schools/teacher",
 };
 
 interface AuthContextValue {
