@@ -7,6 +7,8 @@ import {
   DisbursementRecord,
   FinancialFilterParams,
   FinancialStats,
+  FinancialTrendsResult,
+  MonthlyTrendDataPoint,
   SchoolFinancialListResult,
   SchoolFinancialStatement,
 } from "@/types";
@@ -209,6 +211,49 @@ const BASELINE_DISBURSEMENTS: DisbursementRecord[] = [
     notes: "Classroom colour-coded segregation bins distribution voucher",
     created_at: "2026-09-30T14:15:00Z",
     updated_at: "2026-09-30T14:15:00Z",
+  },
+];
+
+const BASELINE_MONTHLY_TRENDS: MonthlyTrendDataPoint[] = [
+  {
+    month: "2026-07",
+    month_label: "Jul 2026",
+    cash_payout_lkr: 0.0,
+    points_redeemed: 0,
+    waste_collected_kg: 3450.0,
+    voucher_count: 0,
+  },
+  {
+    month: "2026-08",
+    month_label: "Aug 2026",
+    cash_payout_lkr: 0.0,
+    points_redeemed: 0,
+    waste_collected_kg: 4800.0,
+    voucher_count: 0,
+  },
+  {
+    month: "2026-09",
+    month_label: "Sep 2026",
+    cash_payout_lkr: 28840.0,
+    points_redeemed: 19226,
+    waste_collected_kg: 5600.0,
+    voucher_count: 1,
+  },
+  {
+    month: "2026-10",
+    month_label: "Oct 2026",
+    cash_payout_lkr: 120000.0,
+    points_redeemed: 80000,
+    waste_collected_kg: 6100.0,
+    voucher_count: 1,
+  },
+  {
+    month: "2026-11",
+    month_label: "Nov 2026",
+    cash_payout_lkr: 146160.0,
+    points_redeemed: 97440,
+    waste_collected_kg: 6400.0,
+    voucher_count: 1,
   },
 ];
 
@@ -499,6 +544,103 @@ export const financialService = {
       page,
       limit,
       total_pages: totalPages,
+    };
+  },
+
+  /**
+   * Fetch monthly cash payout and points redemption trends
+   */
+  async getFinancialTrends(
+    params: FinancialFilterParams = {}
+  ): Promise<FinancialTrendsResult> {
+    try {
+      const query = new URLSearchParams();
+      if (params.school_id) query.append("school_id", params.school_id.toString());
+      if (params.status && params.status !== "all") query.append("status", params.status);
+      if (params.start_date) query.append("start_date", params.start_date);
+      if (params.end_date) query.append("end_date", params.end_date);
+
+      const response = await api.get<ApiResponse<FinancialTrendsResult>>(
+        `/financial-reports/trends?${query.toString()}`
+      );
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+    } catch {
+      // Fallback for development & Stage 1-5 preview
+    }
+
+    let trends = BASELINE_MONTHLY_TRENDS.map((t) => ({ ...t }));
+
+    if (params.school_id) {
+      const schId = Number(params.school_id);
+      trends = trends.map((t) => {
+        let payout = 0;
+        let points = 0;
+        let count = 0;
+        if (schId === 3 && t.month === "2026-09") {
+          payout = 28840.0;
+          points = 19226;
+          count = 1;
+        } else if (schId === 1 && t.month === "2026-10") {
+          payout = 120000.0;
+          points = 80000;
+          count = 1;
+        } else if (schId === 2 && t.month === "2026-11") {
+          payout = 146160.0;
+          points = 97440;
+          count = 1;
+        }
+        return {
+          ...t,
+          cash_payout_lkr: payout,
+          points_redeemed: points,
+          voucher_count: count,
+        };
+      });
+    }
+
+    if (params.status && params.status !== "all") {
+      if (params.status === "pending") {
+        trends = trends.map((t) => ({
+          ...t,
+          cash_payout_lkr: 0,
+          points_redeemed: 0,
+          voucher_count: 0,
+        }));
+      } else if (params.status === "settled") {
+        trends = trends.map((t) => ({
+          ...t,
+          cash_payout_lkr: t.month === "2026-11" ? t.cash_payout_lkr : 0,
+          points_redeemed: t.month === "2026-11" ? t.points_redeemed : 0,
+          voucher_count: t.month === "2026-11" ? t.voucher_count : 0,
+        }));
+      } else if (params.status === "partial") {
+        trends = trends.map((t) => ({
+          ...t,
+          cash_payout_lkr: t.month === "2026-09" || t.month === "2026-10" ? t.cash_payout_lkr : 0,
+          points_redeemed: t.month === "2026-09" || t.month === "2026-10" ? t.points_redeemed : 0,
+          voucher_count: t.month === "2026-09" || t.month === "2026-10" ? t.voucher_count : 0,
+        }));
+      }
+    }
+
+    if (params.start_date) {
+      const startMonth = params.start_date.slice(0, 7);
+      trends = trends.filter((t) => t.month >= startMonth);
+    }
+    if (params.end_date) {
+      const endMonth = params.end_date.slice(0, 7);
+      trends = trends.filter((t) => t.month <= endMonth);
+    }
+
+    const totalCash = trends.reduce((acc, t) => acc + t.cash_payout_lkr, 0);
+    const totalPoints = trends.reduce((acc, t) => acc + t.points_redeemed, 0);
+
+    return {
+      monthly_trends: trends,
+      total_cash_payout_lkr: totalCash,
+      total_points_redeemed: totalPoints,
     };
   },
 

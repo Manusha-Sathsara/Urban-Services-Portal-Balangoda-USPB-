@@ -7,6 +7,7 @@ import {
   FinancialFilterParams,
   SchoolFinancialStatement,
   DisbursementRecord,
+  MonthlyTrendDataPoint,
 } from "@/types";
 import financialService from "@/services/financialService";
 import { schoolService } from "@/services/schoolService";
@@ -18,6 +19,7 @@ import {
 } from "@/components/financial/FinancialFilters";
 import { SchoolFinancialTable } from "@/components/financial/SchoolFinancialTable";
 import { PayoutSummaryTable } from "@/components/financial/PayoutSummaryTable";
+import { FinancialChartsSection } from "@/components/financial/charts/FinancialChartsSection";
 import {
   Coins,
   Sparkles,
@@ -96,6 +98,9 @@ export default function FinancialReportsPage() {
   const [disbursementTotalPages, setDisbursementTotalPages] = useState<number>(1);
   const [disbursementSearch, setDisbursementSearch] = useState<string>("");
 
+  // Visual Telemetry / Charts Trends State
+  const [trends, setTrends] = useState<MonthlyTrendDataPoint[]>([]);
+
   // Table View Tab (synced with or overriding report perspective)
   const [tableTab, setTableTab] = useState<"all" | "schools" | "payouts">("all");
 
@@ -118,7 +123,7 @@ export default function FinancialReportsPage() {
           report_type: filters.report_type,
         };
 
-        const [statsData, categoryData, schoolData, disbursementData] = await Promise.all([
+        const [statsData, categoryData, schoolData, disbursementData, trendsData] = await Promise.all([
           financialService.getFinancialStats(baseParams),
           financialService.getCategoryValuation(baseParams),
           financialService.getSchoolStatements({
@@ -133,6 +138,7 @@ export default function FinancialReportsPage() {
             limit: 10,
             search: disbSearch || undefined,
           }),
+          financialService.getFinancialTrends(baseParams),
         ]);
 
         setStats(statsData);
@@ -144,6 +150,8 @@ export default function FinancialReportsPage() {
         setDisbursements(disbursementData.disbursements || []);
         setDisbursementTotalCount(disbursementData.total_count || 0);
         setDisbursementTotalPages(disbursementData.total_pages || 1);
+
+        setTrends(trendsData.monthly_trends || []);
       } catch (err) {
         console.warn("Failed to load financial report data:", err);
       } finally {
@@ -678,7 +686,18 @@ export default function FinancialReportsPage() {
           </div>
 
           {/* ------------------------------------------------------------------ */}
-          {/* 7. Stage 4: Financial Reports Tables Section                       */}
+          {/* 7. Stage 5: Financial Trends & Institutional Analytics Charts      */}
+          {/* ------------------------------------------------------------------ */}
+          <FinancialChartsSection
+            stats={stats}
+            trends={trends}
+            schools={schoolStatements}
+            isLoading={isLoading}
+            isFiltered={isFiltered}
+          />
+
+          {/* ------------------------------------------------------------------ */}
+          {/* 8. Stage 4: Financial Reports Tables Section                       */}
           {/* ------------------------------------------------------------------ */}
           <div className="space-y-4">
             {/* Table Selection Tabs */}
@@ -807,17 +826,17 @@ export default function FinancialReportsPage() {
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* 8. Overview Section Summary / Stage Roadmap Note                   */}
+      {/* 9. Overview Section Summary / Stage Roadmap Note                   */}
       {/* ------------------------------------------------------------------ */}
       <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 text-xs text-stone-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-[#800000]" />
           <span>
-            <strong>Stage 4 Status:</strong> Payout Summary Report table and School-wise Financial Report table successfully integrated and connected to multi-criteria filters.
+            <strong>Stage 5 Status:</strong> Visual analytics suite active: Monthly Cash Payout Trends, Monthly Points Redemption Trends, School-wise Comparisons, and Payout Status Distribution charts reactively connected to filters.
           </span>
         </div>
         <span className="text-[11px] text-stone-400 italic">
-          Detailed statement modal, voucher modal, and CSV audit exports scheduled for subsequent stages.
+          Audit statement modal, voucher modal, and CSV exports scheduled for subsequent stages.
         </span>
       </div>
     </div>

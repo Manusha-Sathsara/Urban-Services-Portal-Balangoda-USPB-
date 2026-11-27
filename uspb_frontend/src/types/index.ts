@@ -412,4 +412,19 @@ export interface CategoryValuationListResult {
   total_value_lkr: number;
 }
 
+export interface MonthlyTrendDataPoint {
+  month: string;
+  month_label: string;
+  cash_payout_lkr: number;
+  points_redeemed: number;
+  waste_collected_kg: number;
+  voucher_count: number;
+}
+
+export interface FinancialTrendsResult {
+  monthly_trends: MonthlyTrendDataPoint[];
+  total_cash_payout_lkr: number;
+  total_points_redeemed: number;
+}
+
 
