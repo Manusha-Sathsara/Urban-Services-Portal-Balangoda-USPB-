@@ -8,6 +8,7 @@ import {
   CreateBadgeDto,
   StudentBadgeAward,
   StudentEligibility,
+  TakeBackAwardDto,
   UpdateAwardStatusDto,
   UpdateBadgeDto,
   UpdateThresholdDto,
@@ -26,6 +27,7 @@ import AwardModal from "@/components/badges/AwardModal";
 import AwardTable from "@/components/badges/AwardTable";
 import AwardDetailsModal from "@/components/badges/AwardDetailsModal";
 import AwardStatusModal from "@/components/badges/AwardStatusModal";
+import TakeBackModal, { TakeBackTarget } from "@/components/badges/TakeBackModal";
 import {
   Award,
   CheckCircle2,
@@ -139,6 +141,11 @@ export default function BadgeManagementPage() {
   const [isAwardStatusModalOpen, setIsAwardStatusModalOpen] = useState(false);
   const [awardForStatus, setAwardForStatus] = useState<StudentBadgeAward | null>(null);
   const [isAwardStatusSubmitting, setIsAwardStatusSubmitting] = useState(false);
+
+  // Take-Back / Undo Modal State
+  const [isTakeBackModalOpen, setIsTakeBackModalOpen] = useState(false);
+  const [targetForTakeBack, setTargetForTakeBack] = useState<TakeBackTarget | null>(null);
+  const [isTakeBackSubmitting, setIsTakeBackSubmitting] = useState(false);
 
   // ==========================================
   // DATA FETCHING HOOKS
@@ -407,6 +414,56 @@ export default function BadgeManagementPage() {
     }
   };
 
+  // Take Back / Fault Undo Handlers
+  const handleOpenTakeBackEligibility = (record: StudentEligibility) => {
+    setTargetForTakeBack({
+      award_id: record.award_id,
+      student_id: record.student_id,
+      badge_id: record.badge_id,
+      student_name: record.student_name,
+      student_identifier: record.student_identifier,
+      school_name: record.school_name,
+      badge_name: record.badge_name,
+      badge_icon: record.badge_icon,
+      award_reference: record.award_reference,
+    });
+    setIsTakeBackModalOpen(true);
+  };
+
+  const handleOpenTakeBackAward = (award: StudentBadgeAward) => {
+    setTargetForTakeBack({
+      award_id: award.id,
+      student_id: award.student_id,
+      badge_id: award.badge_id,
+      student_name: award.student_name,
+      student_identifier: award.student_identifier,
+      school_name: award.school_name,
+      badge_name: award.badge_name,
+      badge_icon: award.badge_icon,
+      award_reference: award.award_reference,
+    });
+    setIsTakeBackModalOpen(true);
+  };
+
+  const handleSubmitTakeBack = async (dto: TakeBackAwardDto) => {
+    setIsTakeBackSubmitting(true);
+    try {
+      await badgeService.takeBackAward(dto);
+      setIsTakeBackModalOpen(false);
+      setTargetForTakeBack(null);
+      setSuccessMessage(
+        dto.hard_delete
+          ? "Award record successfully removed from the database."
+          : "Badge award successfully taken back and revoked. Candidate status restored."
+      );
+      await Promise.all([fetchEligibility(), fetchAwards(), fetchStats()]);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to take back award.");
+    } finally {
+      setIsTakeBackSubmitting(false);
+    }
+  };
+
   const handleExportAwardsCsv = async () => {
     try {
       await badgeService.exportAwardsCsv({
@@ -632,6 +689,7 @@ export default function BadgeManagementPage() {
           totalCount={elTotalCount}
           onPageChange={(p) => setElCurrentPage(p)}
           onBestowAward={handleOpenBestowAward}
+          onTakeBack={handleOpenTakeBackEligibility}
           onRefresh={() => {
             fetchEligibility();
             fetchStats();
@@ -692,6 +750,7 @@ export default function BadgeManagementPage() {
             setIsAwardDetailsOpen(true);
           }}
           onChangeStatus={handleOpenAwardStatus}
+          onTakeBack={handleOpenTakeBackAward}
           onExportCsv={handleExportAwardsCsv}
           onRefresh={() => {
             fetchAwards();
@@ -772,6 +831,7 @@ export default function BadgeManagementPage() {
         }}
         award={selectedAward}
         onChangeStatus={handleOpenAwardStatus}
+        onTakeBack={handleOpenTakeBackAward}
       />
 
       <AwardStatusModal
@@ -783,6 +843,17 @@ export default function BadgeManagementPage() {
         award={awardForStatus}
         onSubmit={handleSubmitAwardStatus}
         isSubmitting={isAwardStatusSubmitting}
+      />
+
+      <TakeBackModal
+        isOpen={isTakeBackModalOpen}
+        onClose={() => {
+          setIsTakeBackModalOpen(false);
+          setTargetForTakeBack(null);
+        }}
+        target={targetForTakeBack}
+        onSubmit={handleSubmitTakeBack}
+        isSubmitting={isTakeBackSubmitting}
       />
     </div>
   );

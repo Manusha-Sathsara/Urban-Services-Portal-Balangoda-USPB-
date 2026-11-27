@@ -334,7 +334,9 @@ All endpoints are prefixed with `/api/v1` and require `Authorization: Bearer <to
 | `GET` | `/badges/awards` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Award ledger (filtered by status/school) |
 | `GET` | `/badges/awards/:id` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Award inspection certificate |
 | `POST` | `/badges/awards` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Bestow badge to eligible student |
+| `POST` | `/badges/awards/take-back` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Take back / undo bestowal (soft revoke or hard delete to correct faults) |
 | `PATCH`| `/badges/awards/:id/status` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Update award status (`awarded` $\leftrightarrow$ `revoked`) |
+| `DELETE`| `/badges/awards/:id` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Permanently remove erroneous award record |
 | `GET` | `/badges/awards/export/csv` | `ADMIN`, `GARBAGE_SUPERVISOR`, `TEACHER` | Download official award ledger as CSV |
 
 ---
@@ -393,12 +395,13 @@ Execute the full test suite covering School Management, Waste Category Managemen
 cd uspb_backend
 go test -v ./internal/modules/schoolrewards
 ```
-**Results:** `25 passed, 0 failed` across all modules:
+**Results:** `26 passed, 0 failed` across all modules:
 - School CRUD, duplicate prevention, and program coverage calculation.
 - Category creation, measurement unit locking, and rate history preservation.
 - Badge creation, threshold revision timeline, and positive threshold validation.
 - Points policy evaluation, candidate eligibility, and duplicate award prevention.
 - Award bestowal, threshold freezing, and post-bestowal status modification (`awarded` $\leftrightarrow$ `revoked`).
+- Badge take-back mechanism, fault rectification, and permanent deletion of erroneous entries.
 - Teacher school isolation and multi-tenant security barriers.
 - RFC 4180 CSV export validation.
 

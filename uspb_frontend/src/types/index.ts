@@ -205,6 +205,7 @@ export interface StudentEligibility {
   qualifying_points: number;
   is_eligible: boolean;
   is_awarded: boolean;
+  award_id?: number | null;
   award_reference?: string | null;
   award_date?: string | null;
 }
@@ -271,6 +272,14 @@ export interface UpdateAwardStatusDto {
   status: "awarded" | "revoked";
   reason?: string;
   notes?: string;
+}
+
+export interface TakeBackAwardDto {
+  award_id?: number;
+  student_id?: number;
+  badge_id?: number;
+  reason: string;
+  hard_delete?: boolean;
 }
 
 export interface BadgeListResult {

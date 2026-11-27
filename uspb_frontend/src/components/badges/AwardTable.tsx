@@ -50,6 +50,7 @@ interface AwardTableProps {
   onPageChange: (p: number) => void;
   onViewDetails: (award: StudentBadgeAward) => void;
   onChangeStatus?: (award: StudentBadgeAward) => void;
+  onTakeBack?: (award: StudentBadgeAward) => void;
   onExportCsv: () => void;
   onRefresh: () => void;
   onResetFilters?: () => void;
@@ -79,6 +80,7 @@ export function AwardTable({
   onPageChange,
   onViewDetails,
   onChangeStatus,
+  onTakeBack,
   onExportCsv,
   onRefresh,
   onResetFilters,
@@ -461,6 +463,16 @@ export function AwardTable({
                           aria-label={`Change status for ${award.award_reference}`}
                         >
                           <ShieldAlert className="h-4 w-4" />
+                        </button>
+                      )}
+                      {onTakeBack && (
+                        <button
+                          onClick={() => onTakeBack(award)}
+                          className="p-1.5 rounded-lg text-stone-400 hover:text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
+                          title="Take back badge award (correct faults / mistakes)"
+                          aria-label={`Take back award ${award.award_reference}`}
+                        >
+                          <RotateCcw className="h-4 w-4" />
                         </button>
                       )}
                       <button

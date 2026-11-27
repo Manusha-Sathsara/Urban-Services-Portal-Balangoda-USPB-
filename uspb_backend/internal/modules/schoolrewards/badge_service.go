@@ -47,6 +47,8 @@ type BadgeService interface {
 	// Award operations
 	CreateAward(req *CreateAwardRequest, awardedBy string, teacherSchoolID *int) (*StudentBadgeAward, error)
 	UpdateAwardStatus(id int, req *UpdateAwardStatusRequest, changedBy string, teacherSchoolID *int) (*StudentBadgeAward, error)
+	TakeBackAward(req *TakeBackAwardRequest, performedBy string, teacherSchoolID *int) (*StudentBadgeAward, error)
+	DeleteAward(id int, teacherSchoolID *int) error
 	ListAwards(filter AwardListFilter) (*AwardListResult, error)
 	GetAwardByID(id int, teacherSchoolID *int) (*StudentBadgeAward, error)
 	ExportAwardsCSV(filter AwardListFilter) ([]byte, error)
@@ -405,9 +407,12 @@ func (s *badgeService) ListEligibility(filter EligibilityFilter) (*EligibilityLi
 			existingAward := awardedMap[b.ID]
 			isAwarded := existingAward != nil && existingAward.Status == "awarded"
 
+			var awardID *int
 			var awardRef *string
 			var awardDate *string
 			if isAwarded {
+				aID := existingAward.ID
+				awardID = &aID
 				ref := existingAward.AwardReference
 				awardRef = &ref
 				dt := existingAward.AwardDate
@@ -441,6 +446,7 @@ func (s *badgeService) ListEligibility(filter EligibilityFilter) (*EligibilityLi
 				QualifyingPoints:   qualifyingPoints,
 				IsEligible:         isEligible,
 				IsAwarded:          isAwarded,
+				AwardID:            awardID,
 				AwardReference:     awardRef,
 				AwardDate:          awardDate,
 			}
@@ -513,9 +519,12 @@ func (s *badgeService) GetStudentEligibility(studentID, badgeID int) (*StudentEl
 	award, _ := s.repo.GetAwardByStudentAndBadge(studentID, badgeID)
 	isAwarded := award != nil && award.Status == "awarded"
 
+	var awardID *int
 	var awardRef *string
 	var awardDate *string
 	if isAwarded {
+		aID := award.ID
+		awardID = &aID
 		ref := award.AwardReference
 		awardRef = &ref
 		dt := award.AwardDate
@@ -537,6 +546,7 @@ func (s *badgeService) GetStudentEligibility(studentID, badgeID int) (*StudentEl
 		QualifyingPoints:   qualifyingPoints,
 		IsEligible:         qualifyingPoints >= b.MilestoneThreshold,
 		IsAwarded:          isAwarded,
+		AwardID:            awardID,
 		AwardReference:     awardRef,
 		AwardDate:          awardDate,
 	}, nil
@@ -696,6 +706,63 @@ func (s *badgeService) UpdateAwardStatus(id int, req *UpdateAwardStatusRequest, 
 	}
 
 	return updated, nil
+}
+
+func (s *badgeService) TakeBackAward(req *TakeBackAwardRequest, performedBy string, teacherSchoolID *int) (*StudentBadgeAward, error) {
+	var award *StudentBadgeAward
+	var err error
+
+	if req.AwardID != nil && *req.AwardID > 0 {
+		award, err = s.repo.GetAwardByID(*req.AwardID)
+	} else if req.StudentID != nil && req.BadgeID != nil && *req.StudentID > 0 && *req.BadgeID > 0 {
+		award, err = s.repo.GetAwardByStudentAndBadge(*req.StudentID, *req.BadgeID)
+	} else {
+		return nil, errors.New("award ID or both student ID and badge ID must be provided")
+	}
+
+	if err != nil || award == nil {
+		return nil, ErrAwardNotFound
+	}
+
+	// Enforce school isolation for teachers
+	if teacherSchoolID != nil && *teacherSchoolID > 0 && award.SchoolID != *teacherSchoolID {
+		return nil, ErrUnauthorizedSchoolAccess
+	}
+
+	if req.HardDelete {
+		if err := s.repo.DeleteAward(award.ID); err != nil {
+			return nil, fmt.Errorf("failed to delete award record: %w", err)
+		}
+		return nil, nil
+	}
+
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		reason = "Badge taken back / revoked by administrative action to rectify fault"
+	}
+
+	if performedBy == "" {
+		performedBy = "Municipal Rewards Officer"
+	}
+
+	return s.repo.UpdateAwardStatus(award.ID, "revoked", "", performedBy, reason)
+}
+
+func (s *badgeService) DeleteAward(id int, teacherSchoolID *int) error {
+	if id <= 0 {
+		return ErrAwardNotFound
+	}
+
+	award, err := s.repo.GetAwardByID(id)
+	if err != nil || award == nil {
+		return ErrAwardNotFound
+	}
+
+	if teacherSchoolID != nil && *teacherSchoolID > 0 && award.SchoolID != *teacherSchoolID {
+		return ErrUnauthorizedSchoolAccess
+	}
+
+	return s.repo.DeleteAward(id)
 }
 
 func (s *badgeService) ListAwards(filter AwardListFilter) (*AwardListResult, error) {

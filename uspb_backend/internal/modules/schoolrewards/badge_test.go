@@ -371,3 +371,112 @@ func TestBadgeService_UpdateAwardStatus(t *testing.T) {
 		t.Errorf("expected ErrInvalidAwardStatus for status 'deleted', got: %v", err)
 	}
 }
+
+func TestBadgeService_TakeBackAward_And_DeleteAward(t *testing.T) {
+	service, _, _ := setupTestBadgeService()
+
+	// Student 3 has 65 points, eligible for Badge 1 (threshold 50) and has no existing award
+	eligBefore, err := service.GetStudentEligibility(3, 1)
+	if err != nil {
+		t.Fatalf("failed to get eligibility: %v", err)
+	}
+	if !eligBefore.IsEligible {
+		t.Fatalf("expected student 3 to be eligible for badge 1")
+	}
+	if eligBefore.IsAwarded {
+		t.Fatalf("expected student 3 not to have badge 1 yet")
+	}
+
+	// 1. Bestow badge
+	award, err := service.CreateAward(&CreateAwardRequest{
+		StudentID: 3,
+		BadgeID:   1,
+		Notes:     "Bestowed for testing take-back functionality",
+	}, "officer@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to create award: %v", err)
+	}
+
+	// Verify eligibility now shows awarded with AwardID
+	eligAfter, err := service.GetStudentEligibility(3, 1)
+	if err != nil {
+		t.Fatalf("failed to get eligibility after bestowal: %v", err)
+	}
+	if !eligAfter.IsAwarded || eligAfter.AwardID == nil || *eligAfter.AwardID != award.ID {
+		t.Fatalf("expected eligibility to show awarded with award ID %d", award.ID)
+	}
+
+	// 2. Take back award (Soft revocation with reason)
+	revoked, err := service.TakeBackAward(&TakeBackAwardRequest{
+		AwardID: &award.ID,
+		Reason:  "Accidental bestowal - points entered mistakenly",
+	}, "supervisor@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to take back award: %v", err)
+	}
+	if revoked == nil || revoked.Status != "revoked" {
+		t.Fatalf("expected award status 'revoked', got: %v", revoked)
+	}
+
+	// Verify eligibility reverted to IsAwarded = false
+	eligReverted, err := service.GetStudentEligibility(3, 1)
+	if err != nil {
+		t.Fatalf("failed to get eligibility after take-back: %v", err)
+	}
+	if eligReverted.IsAwarded {
+		t.Errorf("expected IsAwarded to be false after taking back award")
+	}
+
+	// 3. Take back by StudentID and BadgeID with HardDelete: true
+	// First bestow it again (since it was revoked, CreateAward will reinstate or create)
+	award2, err := service.CreateAward(&CreateAwardRequest{
+		StudentID: 3,
+		BadgeID:   1,
+		Notes:     "Re-awarded for hard delete test",
+	}, "officer@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to re-award badge: %v", err)
+	}
+
+	studentID := 3
+	badgeID := 1
+	hardDeleted, err := service.TakeBackAward(&TakeBackAwardRequest{
+		StudentID:  &studentID,
+		BadgeID:    &badgeID,
+		Reason:     "Entry fault - completely remove record",
+		HardDelete: true,
+	}, "supervisor@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to hard delete award via take-back: %v", err)
+	}
+	if hardDeleted != nil {
+		t.Errorf("expected nil return on hard delete, got: %v", hardDeleted)
+	}
+
+	// Verify award is permanently removed from repository
+	_, err = service.GetAwardByID(award2.ID, nil)
+	if err == nil {
+		t.Errorf("expected error fetching deleted award %d, but found it", award2.ID)
+	}
+
+	// 4. Test school isolation
+	// Student 3 is in School 1. A teacher with school_id = 99 cannot take back or delete.
+	otherSchoolID := 99
+	award3, _ := service.CreateAward(&CreateAwardRequest{
+		StudentID: 3,
+		BadgeID:   1,
+	}, "officer@balangoda.uc.gov.lk", nil)
+
+	_, err = service.TakeBackAward(&TakeBackAwardRequest{
+		AwardID: &award3.ID,
+		Reason:  "Unauthorized attempt",
+	}, "otherteacher@balangoda.uc.gov.lk", &otherSchoolID)
+	if !errors.Is(err, ErrUnauthorizedSchoolAccess) {
+		t.Errorf("expected ErrUnauthorizedSchoolAccess, got: %v", err)
+	}
+
+	err = service.DeleteAward(award3.ID, &otherSchoolID)
+	if !errors.Is(err, ErrUnauthorizedSchoolAccess) {
+		t.Errorf("expected ErrUnauthorizedSchoolAccess on delete, got: %v", err)
+	}
+}

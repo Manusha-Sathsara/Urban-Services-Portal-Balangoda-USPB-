@@ -35,8 +35,10 @@ func (h *BadgeHandler) RegisterRoutes(router fiber.Router) {
 	badges.Get("/awards/export/csv", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.ExportAwardsCSV)
 	badges.Get("/awards/:id", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.GetAwardByID)
 	badges.Post("/awards", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.CreateAward)
+	badges.Post("/awards/take-back", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.TakeBackAward)
 	badges.Patch("/awards/:id/status", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.UpdateAwardStatus)
 	badges.Put("/awards/:id/status", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.UpdateAwardStatus)
+	badges.Delete("/awards/:id", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.DeleteAward)
 
 	// 2. Badge Catalog inspection (all authorized roles can view)
 	badges.Get("/", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.List)
@@ -522,4 +524,71 @@ func (h *BadgeHandler) UpdateAwardStatus(c *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(c, fiber.StatusOK, "Badge award status updated successfully", updatedAward)
+}
+
+// TakeBackAward takes back or revokes a bestowed badge award to rectify mistakes or faults
+func (h *BadgeHandler) TakeBackAward(c *fiber.Ctx) error {
+	var req TakeBackAwardRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request payload format")
+	}
+
+	role, _ := c.Locals("role").(string)
+	var teacherSchoolIDPtr *int
+	if role == "TEACHER" {
+		tsID, ok := c.Locals("school_id").(int)
+		if ok && tsID > 0 {
+			teacherSchoolIDPtr = &tsID
+		}
+	}
+
+	performedBy := getOperatorIdentifier(c)
+
+	updatedAward, err := h.service.TakeBackAward(&req, performedBy, teacherSchoolIDPtr)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrAwardNotFound):
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "Badge award record not found")
+		case errors.Is(err, ErrUnauthorizedSchoolAccess):
+			return utils.ErrorResponse(c, fiber.StatusForbidden, err.Error())
+		default:
+			return utils.ErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		}
+	}
+
+	if req.HardDelete {
+		return utils.SuccessResponse(c, fiber.StatusOK, "Badge award successfully taken back and removed", nil)
+	}
+
+	return utils.SuccessResponse(c, fiber.StatusOK, "Badge award successfully taken back and revoked", updatedAward)
+}
+
+// DeleteAward permanently deletes a badge award record
+func (h *BadgeHandler) DeleteAward(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id <= 0 {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid award ID parameter")
+	}
+
+	role, _ := c.Locals("role").(string)
+	var teacherSchoolIDPtr *int
+	if role == "TEACHER" {
+		tsID, ok := c.Locals("school_id").(int)
+		if ok && tsID > 0 {
+			teacherSchoolIDPtr = &tsID
+		}
+	}
+
+	if err := h.service.DeleteAward(id, teacherSchoolIDPtr); err != nil {
+		switch {
+		case errors.Is(err, ErrAwardNotFound):
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "Badge award record not found")
+		case errors.Is(err, ErrUnauthorizedSchoolAccess):
+			return utils.ErrorResponse(c, fiber.StatusForbidden, err.Error())
+		default:
+			return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to delete award: "+err.Error())
+		}
+	}
+
+	return utils.SuccessResponse(c, fiber.StatusOK, "Badge award permanently deleted", nil)
 }

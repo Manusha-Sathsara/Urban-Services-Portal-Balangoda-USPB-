@@ -90,6 +90,7 @@ type StudentEligibility struct {
 	QualifyingPoints   float64           `json:"qualifying_points"`
 	IsEligible         bool              `json:"is_eligible"`
 	IsAwarded          bool              `json:"is_awarded"`
+	AwardID            *int              `json:"award_id,omitempty"`
 	AwardReference     *string           `json:"award_reference,omitempty"`
 	AwardDate          *string           `json:"award_date,omitempty"`
 }
@@ -160,6 +161,15 @@ type UpdateAwardStatusRequest struct {
 	Status string `json:"status"` // "awarded" or "revoked"
 	Reason string `json:"reason"` // Official reason / justification
 	Notes  string `json:"notes,omitempty"`
+}
+
+// TakeBackAwardRequest is used to take back or revoke a bestowed badge to correct errors/faults
+type TakeBackAwardRequest struct {
+	AwardID    *int   `json:"award_id,omitempty"`
+	StudentID  *int   `json:"student_id,omitempty"`
+	BadgeID    *int   `json:"badge_id,omitempty"`
+	Reason     string `json:"reason"`
+	HardDelete bool   `json:"hard_delete,omitempty"`
 }
 
 // CreateAwardRequest represents the council supervisor's intent to record a badge award

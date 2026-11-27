@@ -30,6 +30,7 @@ type BadgeRepository interface {
 	// Award operations
 	CreateAward(award *StudentBadgeAward, performedBy string) error
 	UpdateAwardStatus(id int, status, notes, performedBy, reason string) (*StudentBadgeAward, error)
+	DeleteAward(id int) error
 	GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error)
 	GetAwardByID(id int) (*StudentBadgeAward, error)
 	GetAwardByStudentAndBadge(studentID, badgeID int) (*StudentBadgeAward, error)
@@ -524,6 +525,19 @@ func (r *badgeRepository) UpdateAwardStatus(id int, status, notes, performedBy, 
 	}
 
 	return r.GetAwardByID(id)
+}
+
+func (r *badgeRepository) DeleteAward(id int) error {
+	query := `DELETE FROM student_badge_awards WHERE id = $1`
+	res, err := r.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete award: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *badgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error) {

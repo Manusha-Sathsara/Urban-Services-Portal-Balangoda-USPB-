@@ -14,6 +14,7 @@ import {
   Clock,
   ShieldCheck,
   ShieldAlert,
+  RotateCcw,
 } from "lucide-react";
 
 interface AwardDetailsModalProps {
@@ -21,6 +22,7 @@ interface AwardDetailsModalProps {
   onClose: () => void;
   award: StudentBadgeAward | null;
   onChangeStatus?: (award: StudentBadgeAward) => void;
+  onTakeBack?: (award: StudentBadgeAward) => void;
 }
 
 export function AwardDetailsModal({
@@ -28,6 +30,7 @@ export function AwardDetailsModal({
   onClose,
   award,
   onChangeStatus,
+  onTakeBack,
 }: AwardDetailsModalProps) {
   if (!isOpen || !award) return null;
 
@@ -167,24 +170,36 @@ export function AwardDetailsModal({
 
         {/* Footer */}
         <div className="mt-6 flex items-center justify-between border-t border-stone-100 pt-4">
-          {onChangeStatus ? (
-            <button
-              onClick={() => {
-                onClose();
-                onChangeStatus(award);
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold border transition-colors cursor-pointer ${
-                award.status === "awarded"
-                  ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              }`}
-            >
-              <ShieldAlert className="h-3.5 w-3.5" />
-              <span>{award.status === "awarded" ? "Revoke Award" : "Reinstate Award"}</span>
-            </button>
-          ) : (
-            <div />
-          )}
+          <div className="flex items-center gap-2">
+            {onTakeBack && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onTakeBack(award);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-amber-700" />
+                <span>Take Back Award</span>
+              </button>
+            )}
+            {onChangeStatus && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onChangeStatus(award);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold border transition-colors cursor-pointer ${
+                  award.status === "awarded"
+                    ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                }`}
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span>{award.status === "awarded" ? "Revoke Status" : "Reinstate Status"}</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="rounded-lg bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition-colors cursor-pointer"

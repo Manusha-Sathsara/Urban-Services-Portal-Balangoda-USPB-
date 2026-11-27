@@ -46,6 +46,7 @@ interface EligibilityTableProps {
   totalCount: number;
   onPageChange: (p: number) => void;
   onBestowAward: (record: StudentEligibility) => void;
+  onTakeBack?: (record: StudentEligibility) => void;
   onRefresh: () => void;
   onResetFilters?: () => void;
   isTeacher?: boolean;
@@ -71,6 +72,7 @@ export function EligibilityTable({
   totalCount,
   onPageChange,
   onBestowAward,
+  onTakeBack,
   onRefresh,
   onResetFilters,
   isTeacher = false,
@@ -437,9 +439,16 @@ export function EligibilityTable({
                     {/* Action */}
                     <td className="px-4 py-3.5 text-right">
                       {rec.is_awarded ? (
-                        <span className="text-xs text-stone-400 font-medium">
-                          Completed
-                        </span>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => onTakeBack?.(rec)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 hover:border-amber-400 transition-colors shadow-2xs cursor-pointer"
+                            title="Take back or revoke this badge award to correct faults"
+                          >
+                            <RotateCcw className="h-3 w-3 text-amber-700" />
+                            Take Back
+                          </button>
+                        </div>
                       ) : rec.is_eligible ? (
                         <button
                           onClick={() => onBestowAward(rec)}

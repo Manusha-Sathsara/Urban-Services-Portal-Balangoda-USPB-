@@ -584,6 +584,17 @@ func (m *memoryBadgeRepository) UpdateAwardStatus(id int, status, notes, perform
 	return &copied, nil
 }
 
+func (m *memoryBadgeRepository) DeleteAward(id int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.awards[id]; !ok {
+		return sql.ErrNoRows
+	}
+	delete(m.awards, id)
+	return nil
+}
+
 func (m *memoryBadgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

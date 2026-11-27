@@ -11,6 +11,7 @@ import {
   EligibilityListResult,
   StudentBadgeAward,
   StudentEligibility,
+  TakeBackAwardDto,
   UpdateAwardStatusDto,
   UpdateBadgeDto,
   UpdateThresholdDto,
@@ -293,6 +294,33 @@ export const badgeService = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Take back or undo a bestowed badge award to rectify mistakes or faults
+   */
+  async takeBackAward(dto: TakeBackAwardDto): Promise<StudentBadgeAward | null> {
+    const response = await api.post<ApiResponse<StudentBadgeAward | null>>(
+      "/badges/awards/take-back",
+      dto
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || "Failed to take back badge award");
+    }
+
+    return response.data.data ?? null;
+  },
+
+  /**
+   * Permanently delete a badge award record (e.g. invalid entry)
+   */
+  async deleteAward(id: number): Promise<void> {
+    const response = await api.delete<ApiResponse<null>>(`/badges/awards/${id}`);
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || "Failed to delete badge award record");
+    }
   },
 };
 
