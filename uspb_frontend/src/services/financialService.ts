@@ -464,10 +464,27 @@ export const financialService = {
       );
     }
     if (params.status && params.status !== "all") {
-      filtered = filtered.filter((d) => d.status === params.status);
+      if (params.status === "pending") {
+        // Pending schools have no disbursements
+        filtered = [];
+      } else if (params.status === "settled") {
+        // Only schools with settled status (SCH-002)
+        filtered = filtered.filter((d) => d.school_id === 2);
+      } else if (params.status === "partial") {
+        // Schools with partial status (SCH-001, SCH-003)
+        filtered = filtered.filter((d) => d.school_id === 1 || d.school_id === 3);
+      } else {
+        filtered = filtered.filter((d) => d.status === params.status);
+      }
     }
     if (params.school_id) {
-      filtered = filtered.filter((d) => d.school_id === params.school_id);
+      filtered = filtered.filter((d) => d.school_id === Number(params.school_id));
+    }
+    if (params.start_date) {
+      filtered = filtered.filter((d) => d.disbursement_date >= params.start_date!);
+    }
+    if (params.end_date) {
+      filtered = filtered.filter((d) => d.disbursement_date <= params.end_date!);
     }
 
     const page = params.page || 1;

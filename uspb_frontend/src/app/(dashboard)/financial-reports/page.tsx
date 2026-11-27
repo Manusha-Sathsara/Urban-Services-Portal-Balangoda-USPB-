@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { FinancialStats, CategoryValuation, FinancialFilterParams } from "@/types";
+import {
+  FinancialStats,
+  CategoryValuation,
+  FinancialFilterParams,
+  SchoolFinancialStatement,
+  DisbursementRecord,
+} from "@/types";
 import financialService from "@/services/financialService";
 import { schoolService } from "@/services/schoolService";
 import { StatCard } from "@/components/shared/StatCard";
@@ -10,6 +16,8 @@ import {
   FinancialFilterState,
   SchoolOption,
 } from "@/components/financial/FinancialFilters";
+import { SchoolFinancialTable } from "@/components/financial/SchoolFinancialTable";
+import { PayoutSummaryTable } from "@/components/financial/PayoutSummaryTable";
 import {
   Coins,
   Sparkles,
@@ -27,6 +35,8 @@ import {
   Filter,
   RotateCcw,
   FileSpreadsheet,
+  Receipt,
+  FileText,
 } from "lucide-react";
 
 // Formatter: Currency in Sri Lankan Rupees (LKR)
@@ -73,37 +83,81 @@ export default function FinancialReportsPage() {
   const [draftFilters, setDraftFilters] = useState<FinancialFilterState>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FinancialFilterState>(INITIAL_FILTERS);
 
-  // Load Initial Financial Data and Available Schools
-  const loadData = useCallback(async (filters: FinancialFilterState) => {
-    setIsLoading(true);
-    try {
-      const params: FinancialFilterParams = {
-        school_id: filters.school_id,
-        status: filters.status,
-        start_date: filters.start_date || undefined,
-        end_date: filters.end_date || undefined,
-        report_type: filters.report_type,
-      };
+  // Table Data States
+  const [schoolStatements, setSchoolStatements] = useState<SchoolFinancialStatement[]>([]);
+  const [schoolTotalCount, setSchoolTotalCount] = useState<number>(0);
+  const [schoolPage, setSchoolPage] = useState<number>(1);
+  const [schoolTotalPages, setSchoolTotalPages] = useState<number>(1);
+  const [schoolSearch, setSchoolSearch] = useState<string>("");
 
-      const [statsData, categoryData] = await Promise.all([
-        financialService.getFinancialStats(params),
-        financialService.getCategoryValuation(params),
-      ]);
+  const [disbursements, setDisbursements] = useState<DisbursementRecord[]>([]);
+  const [disbursementTotalCount, setDisbursementTotalCount] = useState<number>(0);
+  const [disbursementPage, setDisbursementPage] = useState<number>(1);
+  const [disbursementTotalPages, setDisbursementTotalPages] = useState<number>(1);
+  const [disbursementSearch, setDisbursementSearch] = useState<string>("");
 
-      setStats(statsData);
-      setCategories(categoryData.categories || []);
-    } catch (err) {
-      console.warn("Failed to load financial overview data:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Table View Tab (synced with or overriding report perspective)
+  const [tableTab, setTableTab] = useState<"all" | "schools" | "payouts">("all");
+
+  // Load Financial Overview and Table Data with Active Filters
+  const loadData = useCallback(
+    async (
+      filters: FinancialFilterState,
+      schPage = schoolPage,
+      schSearch = schoolSearch,
+      disbPage = disbursementPage,
+      disbSearch = disbursementSearch
+    ) => {
+      setIsLoading(true);
+      try {
+        const baseParams: FinancialFilterParams = {
+          school_id: filters.school_id,
+          status: filters.status,
+          start_date: filters.start_date || undefined,
+          end_date: filters.end_date || undefined,
+          report_type: filters.report_type,
+        };
+
+        const [statsData, categoryData, schoolData, disbursementData] = await Promise.all([
+          financialService.getFinancialStats(baseParams),
+          financialService.getCategoryValuation(baseParams),
+          financialService.getSchoolStatements({
+            ...baseParams,
+            page: schPage,
+            limit: 10,
+            search: schSearch || undefined,
+          }),
+          financialService.getDisbursements({
+            ...baseParams,
+            page: disbPage,
+            limit: 10,
+            search: disbSearch || undefined,
+          }),
+        ]);
+
+        setStats(statsData);
+        setCategories(categoryData.categories || []);
+        setSchoolStatements(schoolData.records || []);
+        setSchoolTotalCount(schoolData.total_count || 0);
+        setSchoolTotalPages(schoolData.total_pages || 1);
+
+        setDisbursements(disbursementData.disbursements || []);
+        setDisbursementTotalCount(disbursementData.total_count || 0);
+        setDisbursementTotalPages(disbursementData.total_pages || 1);
+      } catch (err) {
+        console.warn("Failed to load financial report data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [schoolPage, schoolSearch, disbursementPage, disbursementSearch]
+  );
 
   useEffect(() => {
     // Initial fetch
     loadData(INITIAL_FILTERS);
 
-    // Optionally fetch dynamic schools list from backend
+    // Fetch dynamic school options from backend
     schoolService
       .getSchools({ limit: 100 })
       .then((res) => {
@@ -136,14 +190,31 @@ export default function FinancialReportsPage() {
   // Apply filters action
   const handleApplyFilters = () => {
     setAppliedFilters(draftFilters);
-    loadData(draftFilters);
+    setSchoolPage(1);
+    setDisbursementPage(1);
+
+    // If report_type is school_settlement, focus on schools tab
+    if (draftFilters.report_type === "school_settlement") {
+      setTableTab("schools");
+    } else if (draftFilters.report_type === "disbursement_ledger") {
+      setTableTab("payouts");
+    } else {
+      setTableTab("all");
+    }
+
+    loadData(draftFilters, 1, schoolSearch, 1, disbursementSearch);
   };
 
   // Reset filters action
   const handleResetFilters = () => {
     setDraftFilters(INITIAL_FILTERS);
     setAppliedFilters(INITIAL_FILTERS);
-    loadData(INITIAL_FILTERS);
+    setSchoolSearch("");
+    setDisbursementSearch("");
+    setSchoolPage(1);
+    setDisbursementPage(1);
+    setTableTab("all");
+    loadData(INITIAL_FILTERS, 1, "", 1, "");
   };
 
   // Remove individual filter chip
@@ -159,7 +230,49 @@ export default function FinancialReportsPage() {
 
     setDraftFilters(updatedDraft);
     setAppliedFilters(updatedApplied);
-    loadData(updatedApplied);
+    loadData(updatedApplied, schoolPage, schoolSearch, disbursementPage, disbursementSearch);
+  };
+
+  // School table search change
+  const handleSchoolSearchChange = (val: string) => {
+    setSchoolSearch(val);
+    setSchoolPage(1);
+    financialService
+      .getSchoolStatements({
+        school_id: appliedFilters.school_id,
+        status: appliedFilters.status,
+        start_date: appliedFilters.start_date || undefined,
+        end_date: appliedFilters.end_date || undefined,
+        page: 1,
+        limit: 10,
+        search: val || undefined,
+      })
+      .then((res) => {
+        setSchoolStatements(res.records || []);
+        setSchoolTotalCount(res.total_count || 0);
+        setSchoolTotalPages(res.total_pages || 1);
+      });
+  };
+
+  // Disbursement table search change
+  const handleDisbursementSearchChange = (val: string) => {
+    setDisbursementSearch(val);
+    setDisbursementPage(1);
+    financialService
+      .getDisbursements({
+        school_id: appliedFilters.school_id,
+        status: appliedFilters.status,
+        start_date: appliedFilters.start_date || undefined,
+        end_date: appliedFilters.end_date || undefined,
+        page: 1,
+        limit: 10,
+        search: val || undefined,
+      })
+      .then((res) => {
+        setDisbursements(res.disbursements || []);
+        setDisbursementTotalCount(res.total_count || 0);
+        setDisbursementTotalPages(res.total_pages || 1);
+      });
   };
 
   // Settlement rate computation
@@ -176,7 +289,6 @@ export default function FinancialReportsPage() {
     Boolean(appliedFilters.end_date) ||
     appliedFilters.report_type !== "consolidated";
 
-  // Selected school lookup
   const selectedSchoolObj = schools.find((s) => s.id === appliedFilters.school_id);
 
   return (
@@ -221,23 +333,22 @@ export default function FinancialReportsPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider text-[11px] text-amber-950">
-              Demonstration Data Mode — Stage 3 Filter Evaluation
+              Demonstration Data Mode — Stage 4 Tables & Filter Sync
             </span>
             <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-              Interactive Filter Simulation
+              Simulation Baseline
             </span>
           </div>
           <p className="text-amber-800 leading-relaxed text-[11px]">
-            The figures and summary metrics displayed below represent the approved demonstration model for
-            the <strong>Balangoda Urban Council School Waste Rewards Programme</strong>. Apply date range,
-            participating school, report perspective, or payout status filters below to dynamically query
-            and isolate fiscal metrics.
+            The figures, school performance statements, and disbursement audit vouchers below represent the
+            approved demonstration model for the <strong>Balangoda Urban Council School Waste Rewards Programme</strong>.
+            All tables reactively query the local dataset in real time when you apply or reset filters.
           </p>
         </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 3. Stage 3: Multi-Criteria Filter Bar                              */}
+      {/* 3. Multi-Criteria Filter Bar                                       */}
       {/* ------------------------------------------------------------------ */}
       <FinancialFilters
         draftFilters={draftFilters}
@@ -250,7 +361,7 @@ export default function FinancialReportsPage() {
         isLoading={isLoading}
       />
 
-      {/* Perspective Info Callout (When a specific report perspective is selected) */}
+      {/* Perspective Info Callout */}
       {appliedFilters.report_type !== "consolidated" && (
         <div className="flex items-center justify-between rounded-lg border border-[#800000]/20 bg-[#800000]/5 px-4 py-2.5 text-xs text-[#800000]">
           <div className="flex items-center gap-2">
@@ -258,11 +369,11 @@ export default function FinancialReportsPage() {
             <span>
               <strong>Active Perspective:</strong>{" "}
               {appliedFilters.report_type === "school_settlement" &&
-                "School Settlement Statements — Emphasizes school-level earnings, pending balances, and disbursement status."}
+                "School Settlement Statements — Focused on institutional statements, pending liabilities, and disbursement ratios."}
               {appliedFilters.report_type === "material_valuation" &&
-                "Material Stream Valuation — Focuses on recyclable commodity stream weights, market valuations, and landfill cost avoidance."}
+                "Material Stream Valuation — Focused on recyclable commodity stream weights, market valuations, and landfill cost avoidance."}
               {appliedFilters.report_type === "disbursement_ledger" &&
-                "Disbursement Audit Ledger — Details voucher disbursements, settlement dates, and council financial authorizations."}
+                "Disbursement Audit Ledger — Focused on verified voucher disbursements, settlement dates, and council authorizations."}
             </span>
           </div>
           <button
@@ -565,21 +676,148 @@ export default function FinancialReportsPage() {
               ))}
             </div>
           </div>
+
+          {/* ------------------------------------------------------------------ */}
+          {/* 7. Stage 4: Financial Reports Tables Section                       */}
+          {/* ------------------------------------------------------------------ */}
+          <div className="space-y-4">
+            {/* Table Selection Tabs */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-2 gap-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setTableTab("all")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                    tableTab === "all"
+                      ? "bg-[#800000] text-white shadow-2xs"
+                      : "text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  All Reports (Consolidated)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTableTab("schools")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                    tableTab === "schools"
+                      ? "bg-[#800000] text-white shadow-2xs"
+                      : "text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  <SchoolIcon className="h-3.5 w-3.5" />
+                  School Statements ({schoolTotalCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTableTab("payouts")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                    tableTab === "payouts"
+                      ? "bg-[#800000] text-white shadow-2xs"
+                      : "text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  <Receipt className="h-3.5 w-3.5" />
+                  Payout Vouchers ({disbursementTotalCount})
+                </button>
+              </div>
+
+              <div className="text-[11px] text-stone-500 flex items-center gap-1">
+                <span>Both tables synchronized with active filters</span>
+              </div>
+            </div>
+
+            {/* Table 1: School-wise Financial Report Table */}
+            {(tableTab === "all" || tableTab === "schools") && (
+              <SchoolFinancialTable
+                records={schoolStatements}
+                isLoading={isLoading}
+                search={schoolSearch}
+                onSearchChange={handleSchoolSearchChange}
+                currentPage={schoolPage}
+                totalPages={schoolTotalPages}
+                totalCount={schoolTotalCount}
+                onPageChange={(p) => {
+                  setSchoolPage(p);
+                  financialService
+                    .getSchoolStatements({
+                      school_id: appliedFilters.school_id,
+                      status: appliedFilters.status,
+                      start_date: appliedFilters.start_date || undefined,
+                      end_date: appliedFilters.end_date || undefined,
+                      page: p,
+                      limit: 10,
+                      search: schoolSearch || undefined,
+                    })
+                    .then((res) => {
+                      setSchoolStatements(res.records || []);
+                      setSchoolTotalCount(res.total_count || 0);
+                      setSchoolTotalPages(res.total_pages || 1);
+                    });
+                }}
+                onRefresh={() =>
+                  loadData(appliedFilters, schoolPage, schoolSearch, disbursementPage, disbursementSearch)
+                }
+                onViewStatement={(statement) => {
+                  // Ready for Stage 5 Statement Modal
+                  console.log("View statement for:", statement.school_name);
+                }}
+              />
+            )}
+
+            {/* Table 2: Payout Summary Report Table */}
+            {(tableTab === "all" || tableTab === "payouts") && (
+              <PayoutSummaryTable
+                disbursements={disbursements}
+                isLoading={isLoading}
+                search={disbursementSearch}
+                onSearchChange={handleDisbursementSearchChange}
+                currentPage={disbursementPage}
+                totalPages={disbursementTotalPages}
+                totalCount={disbursementTotalCount}
+                onPageChange={(p) => {
+                  setDisbursementPage(p);
+                  financialService
+                    .getDisbursements({
+                      school_id: appliedFilters.school_id,
+                      status: appliedFilters.status,
+                      start_date: appliedFilters.start_date || undefined,
+                      end_date: appliedFilters.end_date || undefined,
+                      page: p,
+                      limit: 10,
+                      search: disbursementSearch || undefined,
+                    })
+                    .then((res) => {
+                      setDisbursements(res.disbursements || []);
+                      setDisbursementTotalCount(res.total_count || 0);
+                      setDisbursementTotalPages(res.total_pages || 1);
+                    });
+                }}
+                onRefresh={() =>
+                  loadData(appliedFilters, schoolPage, schoolSearch, disbursementPage, disbursementSearch)
+                }
+                onViewVoucher={(voucher) => {
+                  // Ready for Stage 5 Voucher Modal
+                  console.log("View voucher:", voucher.voucher_reference);
+                }}
+              />
+            )}
+          </div>
         </>
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* 7. Overview Section Summary / Stage Roadmap Note                   */}
+      {/* 8. Overview Section Summary / Stage Roadmap Note                   */}
       {/* ------------------------------------------------------------------ */}
       <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 text-xs text-stone-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-[#800000]" />
           <span>
-            <strong>Stage 3 Status:</strong> Multi-criteria filter suite (Date Range, Balangoda School, Report Type/Perspective, Payout Status) and Apply/Reset actions active.
+            <strong>Stage 4 Status:</strong> Payout Summary Report table and School-wise Financial Report table successfully integrated and connected to multi-criteria filters.
           </span>
         </div>
         <span className="text-[11px] text-stone-400 italic">
-          Interactive school tables, detailed statement modal, and CSV exports are scheduled for subsequent stages.
+          Detailed statement modal, voucher modal, and CSV audit exports scheduled for subsequent stages.
         </span>
       </div>
     </div>
