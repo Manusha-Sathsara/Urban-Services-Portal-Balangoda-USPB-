@@ -35,6 +35,11 @@ type LedgerRepository interface {
 
 	ListStudentTransactions(ctx context.Context, actor ActorContext, studentID int) ([]PointTransaction, error)
 	GetDashboardSummary(ctx context.Context, actor ActorContext, schoolFilter *int) (*SchoolDashboardSummary, error)
+
+	ListClasses(ctx context.Context, actor ActorContext, schoolFilter *int) ([]SchoolClass, error)
+	CreateClass(ctx context.Context, actor ActorContext, schoolID int, req CreateClassRequest) (*SchoolClass, error)
+	UpdateClass(ctx context.Context, actor ActorContext, classID int, req UpdateClassRequest) (*SchoolClass, error)
+	SyncAndListStudentBadges(ctx context.Context, actor ActorContext, schoolFilter *int) ([]StudentBadgeSummary, error)
 }
 
 type PostgresLedgerRepository struct {
@@ -229,13 +234,17 @@ func (r *PostgresLedgerRepository) RecordCollection(ctx context.Context, actor A
 		}
 
 		// 6. Sync cached balance from ledger inside same locked transaction
-		_, err = tx.ExecContext(ctx, `
+		if _, err = tx.ExecContext(ctx, `
 			UPDATE students
 			SET cached_available_points = COALESCE((SELECT SUM(points_delta) FROM point_transactions WHERE student_id = $1), 0),
 			    updated_at = NOW()
 			WHERE id = $1
-		`, req.StudentID)
-		return err
+		`, req.StudentID); err != nil {
+			return err
+		}
+
+		// 7. Auto-award any newly qualified active badges
+		return syncBadgesForStudentTx(ctx, tx, req.StudentID, actor.UserID)
 	})
 	if err != nil {
 		return nil, err
@@ -541,4 +550,145 @@ func derefStr(p *string) string {
 		return ""
 	}
 	return *p
+}
+
+func syncBadgesForStudentTx(ctx context.Context, tx *sqlx.Tx, studentID int, actorUserID int) error {
+	var lifetime, available float64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN tx_type IN ('EARN_COLLECTION', 'COLLECTION_REVERSAL') THEN points_delta ELSE 0 END), 0),
+			COALESCE(SUM(points_delta), 0)
+		FROM point_transactions
+		WHERE student_id = $1
+	`, studentID).Scan(&lifetime, &available); err != nil {
+		return err
+	}
+
+	// Pre-build string values in Go to avoid pgx OID inference conflicts
+	// when the same parameter appears in both text-concat and int contexts.
+	refPrefix := fmt.Sprintf("AUTO-%d-", studentID)
+	awardedBy := fmt.Sprintf("AUTO_SYSTEM_%d", actorUserID)
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO student_badge_awards (
+			award_reference, student_id, badge_id, qualifying_points, threshold_at_award,
+			award_date, awarded_by, notes, status
+		)
+		SELECT
+			$1::text || bd.id::text,
+			$2::int,
+			bd.id,
+			CASE WHEN bd.eligibility_metric = 'available_points' THEN $3::numeric ELSE $4::numeric END,
+			bd.milestone_threshold,
+			CURRENT_DATE,
+			$5::text,
+			'Automatically awarded on reaching milestone',
+			'awarded'
+		FROM badge_definitions bd
+		WHERE bd.status = 'active'
+		  AND (
+			(bd.eligibility_metric = 'lifetime_earned' AND $4::numeric >= bd.milestone_threshold)
+			OR (bd.eligibility_metric = 'available_points' AND $3::numeric >= bd.milestone_threshold)
+		  )
+		ON CONFLICT (student_id, badge_id) DO NOTHING
+	`, refPrefix, studentID, available, lifetime, awardedBy)
+	return err
+}
+
+func (r *PostgresLedgerRepository) ListClasses(ctx context.Context, actor ActorContext, schoolFilter *int) ([]SchoolClass, error) {
+	sf := 0
+	if schoolFilter != nil {
+		sf = *schoolFilter
+	}
+	var classes []SchoolClass
+	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
+		return tx.SelectContext(ctx, &classes, `
+			SELECT sc.id, sc.school_id, sc.grade, sc.class_name, sc.teacher_in_charge, sc.is_active, sc.created_at,
+			       COUNT(st.id) AS student_count,
+			       COALESCE(SUM(st.cached_available_points), 0) AS total_points
+			FROM school_classes sc
+			LEFT JOIN students st ON st.school_id = sc.school_id AND st.grade = sc.grade AND st.class_name = sc.class_name
+			WHERE ($1 = 0 OR sc.school_id = $1)
+			GROUP BY sc.id
+			ORDER BY sc.grade ASC, sc.class_name ASC
+		`, sf)
+	})
+	if classes == nil {
+		classes = []SchoolClass{}
+	}
+	return classes, err
+}
+
+func (r *PostgresLedgerRepository) CreateClass(ctx context.Context, actor ActorContext, schoolID int, req CreateClassRequest) (*SchoolClass, error) {
+	var c SchoolClass
+	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
+		return tx.GetContext(ctx, &c, `
+			INSERT INTO school_classes (school_id, grade, class_name, teacher_in_charge)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, school_id, grade, class_name, teacher_in_charge, is_active, created_at
+		`, schoolID, req.Grade, req.ClassName, req.TeacherInCharge)
+	})
+	return &c, err
+}
+
+func (r *PostgresLedgerRepository) UpdateClass(ctx context.Context, actor ActorContext, classID int, req UpdateClassRequest) (*SchoolClass, error) {
+	var c SchoolClass
+	err := database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
+		return tx.GetContext(ctx, &c, `
+			UPDATE school_classes
+			SET grade = COALESCE($1, grade),
+			    class_name = COALESCE($2, class_name),
+			    teacher_in_charge = COALESCE($3, teacher_in_charge),
+			    is_active = COALESCE($4, is_active),
+			    updated_at = NOW()
+			WHERE id = $5
+			RETURNING id, school_id, grade, class_name, teacher_in_charge, is_active, created_at
+		`, req.Grade, req.ClassName, req.TeacherInCharge, req.IsActive, classID)
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrStudentNotFound
+	}
+	return &c, err
+}
+
+func (r *PostgresLedgerRepository) SyncAndListStudentBadges(ctx context.Context, actor ActorContext, schoolFilter *int) ([]StudentBadgeSummary, error) {
+	students, err := r.ListStudents(ctx, actor, schoolFilter, "")
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]StudentBadgeSummary, 0, len(students))
+	err = database.WithRLS(ctx, r.db, r.rls(actor), func(tx *sqlx.Tx) error {
+		for _, st := range students {
+			if st.IsActive {
+				if err := syncBadgesForStudentTx(ctx, tx, st.ID, actor.UserID); err != nil {
+					return err
+				}
+			}
+			var badges []string
+			if err := tx.SelectContext(ctx, &badges, `
+				SELECT bd.name
+				FROM student_badge_awards sba
+				JOIN badge_definitions bd ON bd.id = sba.badge_id
+				WHERE sba.student_id = $1 AND sba.status = 'awarded'
+				ORDER BY bd.milestone_threshold ASC
+			`, st.ID); err != nil {
+				return err
+			}
+			if badges == nil {
+				badges = []string{}
+			}
+			out = append(out, StudentBadgeSummary{
+				StudentID:            st.ID,
+				MembershipNo:         st.MembershipNo,
+				FullName:             st.FullName,
+				Grade:                st.Grade,
+				ClassName:            st.ClassName,
+				LifetimeEarnedPoints: st.LifetimeEarnedPoints,
+				AvailablePoints:      st.CachedAvailablePoints,
+				AwardedBadges:        badges,
+			})
+		}
+		return nil
+	})
+	return out, err
 }

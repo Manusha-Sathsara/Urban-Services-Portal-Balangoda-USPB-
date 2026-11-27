@@ -2,6 +2,7 @@ package schoolrewards
 
 import (
 	"errors"
+	"log"
 	"strconv"
 
 	"github.com/BalangodaUC/uspb_backend/internal/middleware"
@@ -46,6 +47,11 @@ func (h *LedgerHandler) RegisterRoutes(router fiber.Router) {
 	sr.Get("/payouts", h.ListPayouts)
 	sr.Post("/payouts", h.RecordPayout)
 	sr.Post("/payouts/:id/reverse", middleware.RequireRoles("GARBAGE_SUPERVISOR", "ADMIN"), h.ReversePayout)
+
+	sr.Get("/classes", h.ListClasses)
+	sr.Post("/classes", h.CreateClass)
+	sr.Patch("/classes/:id", h.UpdateClass)
+	sr.Get("/student-badges", h.ListStudentBadges)
 }
 
 func (h *LedgerHandler) DashboardSummary(c *fiber.Ctx) error {
@@ -213,6 +219,62 @@ func (h *LedgerHandler) ReversePayout(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, fiber.StatusOK, "Payout reversed", nil)
 }
 
+func (h *LedgerHandler) ListClasses(c *fiber.Ctx) error {
+	var schoolFilter *int
+	if raw := c.Query("school_id"); raw != "" {
+		if id, err := strconv.Atoi(raw); err == nil && id > 0 {
+			schoolFilter = &id
+		}
+	}
+	classes, err := h.service.ListClasses(c.UserContext(), actorFromCtx(c), schoolFilter)
+	if err != nil {
+		return mapLedgerError(c, err)
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Classes retrieved", classes)
+}
+
+func (h *LedgerHandler) CreateClass(c *fiber.Ctx) error {
+	var req CreateClassRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+	created, err := h.service.CreateClass(c.UserContext(), actorFromCtx(c), req)
+	if err != nil {
+		return mapLedgerError(c, err)
+	}
+	return utils.SuccessResponse(c, fiber.StatusCreated, "Class created", created)
+}
+
+func (h *LedgerHandler) UpdateClass(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id <= 0 {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid class ID")
+	}
+	var req UpdateClassRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+	updated, err := h.service.UpdateClass(c.UserContext(), actorFromCtx(c), id, req)
+	if err != nil {
+		return mapLedgerError(c, err)
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Class updated", updated)
+}
+
+func (h *LedgerHandler) ListStudentBadges(c *fiber.Ctx) error {
+	var schoolFilter *int
+	if raw := c.Query("school_id"); raw != "" {
+		if id, err := strconv.Atoi(raw); err == nil && id > 0 {
+			schoolFilter = &id
+		}
+	}
+	list, err := h.service.SyncAndListStudentBadges(c.UserContext(), actorFromCtx(c), schoolFilter)
+	if err != nil {
+		return mapLedgerError(c, err)
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Student badges retrieved", list)
+}
+
 func mapLedgerError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, ErrValidation):
@@ -224,6 +286,7 @@ func mapLedgerError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, ErrInsufficientPoints), errors.Is(err, ErrStudentInactive), errors.Is(err, ErrAlreadyReversed):
 		return utils.ErrorResponse(c, fiber.StatusConflict, err.Error())
 	default:
+		log.Printf("[schoolrewards] unexpected error: %v", err)
 		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "School rewards operation failed")
 	}
 }

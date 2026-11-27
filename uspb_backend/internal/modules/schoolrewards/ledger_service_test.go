@@ -230,6 +230,22 @@ func (m *memoryLedgerRepo) GetDashboardSummary(_ context.Context, _ ActorContext
 	return &SchoolDashboardSummary{}, nil
 }
 
+func (m *memoryLedgerRepo) ListClasses(_ context.Context, _ ActorContext, _ *int) ([]SchoolClass, error) {
+	return []SchoolClass{}, nil
+}
+
+func (m *memoryLedgerRepo) CreateClass(_ context.Context, _ ActorContext, schoolID int, req CreateClassRequest) (*SchoolClass, error) {
+	return &SchoolClass{ID: 1, SchoolID: schoolID, Grade: req.Grade, ClassName: req.ClassName, IsActive: true}, nil
+}
+
+func (m *memoryLedgerRepo) UpdateClass(_ context.Context, _ ActorContext, classID int, _ UpdateClassRequest) (*SchoolClass, error) {
+	return &SchoolClass{ID: classID, IsActive: true}, nil
+}
+
+func (m *memoryLedgerRepo) SyncAndListStudentBadges(_ context.Context, _ ActorContext, _ *int) ([]StudentBadgeSummary, error) {
+	return []StudentBadgeSummary{}, nil
+}
+
 func TestCollectionDecimalPointsAndRedemptionPreservesRemainder(t *testing.T) {
 	repo := newMemoryLedgerRepo()
 	svc := NewLedgerService(repo)

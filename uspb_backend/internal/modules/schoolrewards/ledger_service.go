@@ -170,3 +170,43 @@ func (s *LedgerService) GetDashboardSummary(ctx context.Context, actor ActorCont
 	}
 	return s.repo.GetDashboardSummary(ctx, actor, scoped)
 }
+
+func (s *LedgerService) ListClasses(ctx context.Context, actor ActorContext, schoolFilter *int) ([]SchoolClass, error) {
+	scoped, err := resolveSchoolScope(actor, schoolFilter)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.ListClasses(ctx, actor, scoped)
+}
+
+func (s *LedgerService) CreateClass(ctx context.Context, actor ActorContext, req CreateClassRequest) (*SchoolClass, error) {
+	req.Grade = strings.TrimSpace(req.Grade)
+	req.ClassName = strings.TrimSpace(req.ClassName)
+	req.TeacherInCharge = strings.TrimSpace(req.TeacherInCharge)
+	if req.Grade == "" || req.ClassName == "" {
+		return nil, fmt.Errorf("%w: grade and class_name are required", ErrValidation)
+	}
+	scoped, err := resolveSchoolScope(actor, req.SchoolID)
+	if err != nil {
+		return nil, err
+	}
+	if scoped == nil || *scoped <= 0 {
+		return nil, fmt.Errorf("%w: school_id is required", ErrValidation)
+	}
+	return s.repo.CreateClass(ctx, actor, *scoped, req)
+}
+
+func (s *LedgerService) UpdateClass(ctx context.Context, actor ActorContext, classID int, req UpdateClassRequest) (*SchoolClass, error) {
+	if classID <= 0 {
+		return nil, fmt.Errorf("%w: invalid class_id", ErrValidation)
+	}
+	return s.repo.UpdateClass(ctx, actor, classID, req)
+}
+
+func (s *LedgerService) SyncAndListStudentBadges(ctx context.Context, actor ActorContext, schoolFilter *int) ([]StudentBadgeSummary, error) {
+	scoped, err := resolveSchoolScope(actor, schoolFilter)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.SyncAndListStudentBadges(ctx, actor, scoped)
+}

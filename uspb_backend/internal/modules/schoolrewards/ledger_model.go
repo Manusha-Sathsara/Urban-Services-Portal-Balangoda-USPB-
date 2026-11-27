@@ -165,3 +165,40 @@ type SchoolDashboardSummary struct {
 	TotalPayoutsLKR    float64 `json:"total_payouts_lkr"`
 	TotalCollections   int     `json:"total_collections"`
 }
+
+type SchoolClass struct {
+	ID              int       `db:"id" json:"id"`
+	SchoolID        int       `db:"school_id" json:"school_id"`
+	Grade           string    `db:"grade" json:"grade"`
+	ClassName       string    `db:"class_name" json:"class_name"`
+	TeacherInCharge string    `db:"teacher_in_charge" json:"teacher_in_charge"`
+	IsActive        bool      `db:"is_active" json:"is_active"`
+	StudentCount    int       `db:"student_count" json:"student_count"`
+	TotalPoints     float64   `db:"total_points" json:"total_points"`
+	CreatedAt       time.Time `db:"created_at" json:"created_at"`
+}
+
+type CreateClassRequest struct {
+	SchoolID        *int   `json:"school_id,omitempty"`
+	Grade           string `json:"grade"`
+	ClassName       string `json:"class_name"`
+	TeacherInCharge string `json:"teacher_in_charge"`
+}
+
+type UpdateClassRequest struct {
+	Grade           *string `json:"grade"`
+	ClassName       *string `json:"class_name"`
+	TeacherInCharge *string `json:"teacher_in_charge"`
+	IsActive        *bool   `json:"is_active"`
+}
+
+type StudentBadgeSummary struct {
+	StudentID            int      `json:"student_id"`
+	MembershipNo         string   `json:"membership_no"`
+	FullName             string   `json:"full_name"`
+	Grade                string   `json:"grade"`
+	ClassName            string   `json:"class_name"`
+	LifetimeEarnedPoints float64  `json:"lifetime_earned_points"`
+	AvailablePoints      float64  `json:"available_points"`
+	AwardedBadges        []string `json:"awarded_badges"`
+}
