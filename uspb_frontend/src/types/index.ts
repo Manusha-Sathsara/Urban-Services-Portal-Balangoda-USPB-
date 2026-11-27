@@ -11,14 +11,78 @@ export interface User {
   id: number;
   name: string;
   username: string;
+  email: string;
+  phone: string;
   role: UserRole;
   school_id?: number | null;
+  is_active: boolean;
+  must_change_password: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface AuthResponse {
-  token: string;
   user: User;
+  csrf_token?: string;
+}
+
+export interface AuditLog {
+  id: number;
+  actor_user_id?: number | null;
+  action: string;
+  target_type: string;
+  target_id: string;
+  ip_address: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AuditLogPage {
+  logs: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface School {
+  id: number;
+  name: string;
+  code: string;
+  address: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  user_id: number;
+  username: string;
+  role: UserRole;
+  user_agent: string;
+  ip_address: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  username: string;
+  email?: string;
+  phone?: string;
+  temporary_password: string;
+  role: UserRole;
+  school_id?: number | null;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  role?: UserRole;
+  school_id?: number | null;
+  is_active?: boolean;
 }
 
 export interface GarbageFeeRecord {
@@ -28,7 +92,7 @@ export interface GarbageFeeRecord {
   assessment_no: string;
   amount: number;
   status: "paid" | "pending" | "overdue";
-  period: string; // e.g. "2026-Q1"
+  period: string;
   paid_at?: string;
   created_at: string;
 }

@@ -6,30 +6,16 @@ import { usePathname } from "next/navigation";
 import { getServiceConfig } from "@/lib/serviceConfig";
 
 export interface HeaderProps {
-  /** Optional role override; if omitted, automatically derived from the active service route */
-  userRole?: string;
-  /** Optional user name override; if omitted, uses service default */
-  userName?: string;
-  /** Optional service name override; if omitted, automatically derived from active route */
   serviceName?: string;
 }
 
-export function Header({
-  userName,
-  userRole,
-  serviceName: customServiceName,
-}: HeaderProps) {
+export function Header({ serviceName: customServiceName }: HeaderProps) {
   const pathname = usePathname();
   const config = getServiceConfig(pathname);
-
-  // Dynamic values defaulting to service-specific configuration
   const activeServiceName = customServiceName || config.serviceName;
-  const activeRoleTitle = userRole || config.roleTitle;
-  const activeUserName = userName || config.defaultUserName;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#f0e6e5] bg-white px-4 md:px-6 shadow-2xs backdrop-blur transition-all">
-      {/* Service & Portal Branding */}
       <div className="flex items-center gap-3">
         <Link
           href="/"
@@ -58,43 +44,12 @@ export function Header({
         </Link>
       </div>
 
-      {/* Right-hand Controls & Role Badge */}
-      <div className="flex items-center gap-2 md:gap-4">
-        {/* Link back to public portal (hidden on very small screens) */}
-        <Link
-          href="/"
-          className="hidden lg:inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-[#8a5a58] hover:bg-[#faf4f3] hover:text-[#5a0000] transition-colors"
-        >
-          <span aria-hidden="true">&larr;</span> Public Portal
-        </Link>
-
-        {/* User profile & service role badge */}
-        <div
-          className="flex items-center gap-2 rounded-full border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 shadow-xs max-w-[280px] sm:max-w-none"
-          title={`Active Role: ${activeRoleTitle}`}
-        >
-          <div
-            className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"
-            aria-hidden="true"
-          />
-          <div className="truncate text-xs text-[#5a0000]">
-            <span className="font-semibold text-[#5a0000]">
-              {activeUserName}
-            </span>{" "}
-            <span className="hidden sm:inline text-[#8a5a58] font-normal">
-              ({activeRoleTitle})
-            </span>
-          </div>
-        </div>
-
-        {/* Sign out link */}
-        <Link
-          href="/login"
-          className="btn-hover-fx shrink-0 rounded border border-[#dcc6c4] bg-white px-3 py-1.5 text-xs font-semibold text-[#5a0000] hover:bg-[#f0e0df] hover:border-[#800000] transition"
-        >
-          Sign Out
-        </Link>
-      </div>
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 rounded-md border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 text-xs font-medium text-[#5a0000] hover:bg-[#f0e0df] transition-colors"
+      >
+        <span aria-hidden="true">&larr;</span> Public Portal
+      </Link>
     </header>
   );
 }
