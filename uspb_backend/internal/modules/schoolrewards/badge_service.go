@@ -23,6 +23,8 @@ var (
 	ErrStudentNotEligible       = errors.New("student does not satisfy the required points threshold for this badge")
 	ErrBadgeAlreadyAwarded      = errors.New("this badge has already been awarded to this student")
 	ErrUnauthorizedSchoolAccess = errors.New("teachers can only access students from their assigned school")
+	ErrInvalidAwardStatus       = errors.New("invalid award status: must be 'awarded' or 'revoked'")
+	ErrAwardNotFound            = errors.New("badge award record not found")
 )
 
 // BadgeService defines business logic operations for Badge Configuration, Eligibility, and Awards
@@ -44,6 +46,7 @@ type BadgeService interface {
 
 	// Award operations
 	CreateAward(req *CreateAwardRequest, awardedBy string, teacherSchoolID *int) (*StudentBadgeAward, error)
+	UpdateAwardStatus(id int, req *UpdateAwardStatusRequest, changedBy string, teacherSchoolID *int) (*StudentBadgeAward, error)
 	ListAwards(filter AwardListFilter) (*AwardListResult, error)
 	GetAwardByID(id int, teacherSchoolID *int) (*StudentBadgeAward, error)
 	ExportAwardsCSV(filter AwardListFilter) ([]byte, error)
@@ -594,6 +597,15 @@ func (s *badgeService) CreateAward(req *CreateAwardRequest, awardedBy string, te
 			ErrStudentNotEligible, qualifyingPoints, badge.MilestoneThreshold)
 	}
 
+	// If previously revoked, reinstate existing award record
+	if existing != nil && existing.Status == "revoked" {
+		reason := fmt.Sprintf("Badge re-conferred after previous revocation. Qualifying points: %.1f", qualifyingPoints)
+		if strings.TrimSpace(req.Notes) != "" {
+			reason += " | Notes: " + strings.TrimSpace(req.Notes)
+		}
+		return s.repo.UpdateAwardStatus(existing.ID, "awarded", req.Notes, awardedBy, reason)
+	}
+
 	// 5. Generate unique award reference
 	ref, err := s.repo.GetNextAwardReference()
 	if err != nil {
@@ -636,6 +648,54 @@ func (s *badgeService) CreateAward(req *CreateAwardRequest, awardedBy string, te
 	}
 
 	return award, nil
+}
+
+func (s *badgeService) UpdateAwardStatus(id int, req *UpdateAwardStatusRequest, changedBy string, teacherSchoolID *int) (*StudentBadgeAward, error) {
+	if id <= 0 {
+		return nil, ErrAwardNotFound
+	}
+
+	targetStatus := strings.ToLower(strings.TrimSpace(req.Status))
+	if targetStatus != "awarded" && targetStatus != "revoked" {
+		return nil, ErrInvalidAwardStatus
+	}
+
+	award, err := s.repo.GetAwardByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch award: %w", err)
+	}
+	if award == nil {
+		return nil, ErrAwardNotFound
+	}
+
+	// Enforce school isolation for teachers
+	if teacherSchoolID != nil && *teacherSchoolID > 0 && award.SchoolID != *teacherSchoolID {
+		return nil, ErrUnauthorizedSchoolAccess
+	}
+
+	if award.Status == targetStatus && strings.TrimSpace(req.Notes) == "" {
+		return award, nil
+	}
+
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		if targetStatus == "revoked" {
+			reason = "Award revoked by municipal administration"
+		} else {
+			reason = "Award reinstated by municipal administration"
+		}
+	}
+
+	if changedBy == "" {
+		changedBy = "Municipal Rewards Officer"
+	}
+
+	updated, err := s.repo.UpdateAwardStatus(id, targetStatus, req.Notes, changedBy, reason)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update award status: %w", err)
+	}
+
+	return updated, nil
 }
 
 func (s *badgeService) ListAwards(filter AwardListFilter) (*AwardListResult, error) {

@@ -11,6 +11,7 @@ import {
   EligibilityListResult,
   StudentBadgeAward,
   StudentEligibility,
+  UpdateAwardStatusDto,
   UpdateBadgeDto,
   UpdateThresholdDto,
 } from "@/types";
@@ -37,6 +38,7 @@ export interface EligibilityFilterParams {
 export interface AwardFilterParams {
   schoolId?: number;
   badgeId?: number;
+  status?: "all" | "awarded" | "revoked";
   search?: string;
   startDate?: string;
   endDate?: string;
@@ -213,12 +215,29 @@ export const badgeService = {
   },
 
   /**
+   * Update the status of an existing badge award (e.g. awarded <-> revoked)
+   */
+  async updateAwardStatus(id: number, dto: UpdateAwardStatusDto): Promise<StudentBadgeAward> {
+    const response = await api.patch<ApiResponse<StudentBadgeAward>>(
+      `/badges/awards/${id}/status`,
+      dto
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || "Failed to update award status");
+    }
+
+    return response.data.data;
+  },
+
+  /**
    * Fetch recorded badge awards
    */
   async getAwards(params: AwardFilterParams = {}): Promise<AwardListResult> {
     const query = new URLSearchParams();
     if (params.schoolId) query.append("school_id", params.schoolId.toString());
     if (params.badgeId) query.append("badge_id", params.badgeId.toString());
+    if (params.status && params.status !== "all") query.append("status", params.status);
     if (params.search) query.append("search", params.search);
     if (params.startDate) query.append("start_date", params.startDate);
     if (params.endDate) query.append("end_date", params.endDate);
@@ -256,6 +275,7 @@ export const badgeService = {
     const query = new URLSearchParams();
     if (params.schoolId) query.append("school_id", params.schoolId.toString());
     if (params.badgeId) query.append("badge_id", params.badgeId.toString());
+    if (params.status && params.status !== "all") query.append("status", params.status);
     if (params.search) query.append("search", params.search);
     if (params.startDate) query.append("start_date", params.startDate);
     if (params.endDate) query.append("end_date", params.endDate);

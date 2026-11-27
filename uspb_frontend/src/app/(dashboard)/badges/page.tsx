@@ -8,6 +8,7 @@ import {
   CreateBadgeDto,
   StudentBadgeAward,
   StudentEligibility,
+  UpdateAwardStatusDto,
   UpdateBadgeDto,
   UpdateThresholdDto,
 } from "@/types";
@@ -24,6 +25,7 @@ import EligibilityTable from "@/components/badges/EligibilityTable";
 import AwardModal from "@/components/badges/AwardModal";
 import AwardTable from "@/components/badges/AwardTable";
 import AwardDetailsModal from "@/components/badges/AwardDetailsModal";
+import AwardStatusModal from "@/components/badges/AwardStatusModal";
 import {
   Award,
   CheckCircle2,
@@ -123,6 +125,7 @@ export default function BadgeManagementPage() {
   const [isAwardsLoading, setIsAwardsLoading] = useState(false);
   const [awSchoolId, setAwSchoolId] = useState<number | undefined>();
   const [awBadgeId, setAwBadgeId] = useState<number | undefined>();
+  const [awStatusFilter, setAwStatusFilter] = useState<"all" | "awarded" | "revoked">("all");
   const [awStartDate, setAwStartDate] = useState("");
   const [awEndDate, setAwEndDate] = useState("");
   const [awSearch, setAwSearch] = useState("");
@@ -132,6 +135,10 @@ export default function BadgeManagementPage() {
 
   const [isAwardDetailsOpen, setIsAwardDetailsOpen] = useState(false);
   const [selectedAward, setSelectedAward] = useState<StudentBadgeAward | null>(null);
+
+  const [isAwardStatusModalOpen, setIsAwardStatusModalOpen] = useState(false);
+  const [awardForStatus, setAwardForStatus] = useState<StudentBadgeAward | null>(null);
+  const [isAwardStatusSubmitting, setIsAwardStatusSubmitting] = useState(false);
 
   // ==========================================
   // DATA FETCHING HOOKS
@@ -234,6 +241,7 @@ export default function BadgeManagementPage() {
       const result = await badgeService.getAwards({
         schoolId: awSchoolId,
         badgeId: awBadgeId,
+        status: awStatusFilter !== "all" ? awStatusFilter : undefined,
         startDate: awStartDate || undefined,
         endDate: awEndDate || undefined,
         search: awSearch.trim() || undefined,
@@ -250,7 +258,7 @@ export default function BadgeManagementPage() {
     } finally {
       setIsAwardsLoading(false);
     }
-  }, [awSchoolId, awBadgeId, awStartDate, awEndDate, awSearch, awCurrentPage]);
+  }, [awSchoolId, awBadgeId, awStatusFilter, awStartDate, awEndDate, awSearch, awCurrentPage]);
 
   useEffect(() => {
     if (activeTab === "awards") {
@@ -377,11 +385,34 @@ export default function BadgeManagementPage() {
     }
   };
 
+  const handleOpenAwardStatus = (award: StudentBadgeAward) => {
+    setAwardForStatus(award);
+    setIsAwardStatusModalOpen(true);
+  };
+
+  const handleSubmitAwardStatus = async (id: number, dto: UpdateAwardStatusDto) => {
+    setIsAwardStatusSubmitting(true);
+    try {
+      const updated = await badgeService.updateAwardStatus(id, dto);
+      setIsAwardStatusModalOpen(false);
+      setAwardForStatus(null);
+      setSuccessMessage(
+        `Award ${updated.award_reference} status successfully changed to '${updated.status}'. Municipal audit log recorded.`
+      );
+      await Promise.all([fetchAwards(), fetchStats(), fetchEligibility()]);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update award status.");
+    } finally {
+      setIsAwardStatusSubmitting(false);
+    }
+  };
+
   const handleExportAwardsCsv = async () => {
     try {
       await badgeService.exportAwardsCsv({
         schoolId: awSchoolId,
         badgeId: awBadgeId,
+        status: awStatusFilter !== "all" ? awStatusFilter : undefined,
         startDate: awStartDate || undefined,
         endDate: awEndDate || undefined,
         search: awSearch.trim() || undefined,
@@ -632,6 +663,11 @@ export default function BadgeManagementPage() {
             setAwBadgeId(id);
             setAwCurrentPage(1);
           }}
+          selectedStatus={awStatusFilter}
+          onStatusChange={(status) => {
+            setAwStatusFilter(status);
+            setAwCurrentPage(1);
+          }}
           startDate={awStartDate}
           onStartDateChange={(val) => {
             setAwStartDate(val);
@@ -655,6 +691,7 @@ export default function BadgeManagementPage() {
             setSelectedAward(award);
             setIsAwardDetailsOpen(true);
           }}
+          onChangeStatus={handleOpenAwardStatus}
           onExportCsv={handleExportAwardsCsv}
           onRefresh={() => {
             fetchAwards();
@@ -664,6 +701,7 @@ export default function BadgeManagementPage() {
             setAwSearch("");
             setAwSchoolId(undefined);
             setAwBadgeId(undefined);
+            setAwStatusFilter("all");
             setAwStartDate("");
             setAwEndDate("");
             setAwCurrentPage(1);
@@ -733,6 +771,18 @@ export default function BadgeManagementPage() {
           setSelectedAward(null);
         }}
         award={selectedAward}
+        onChangeStatus={handleOpenAwardStatus}
+      />
+
+      <AwardStatusModal
+        isOpen={isAwardStatusModalOpen}
+        onClose={() => {
+          setIsAwardStatusModalOpen(false);
+          setAwardForStatus(null);
+        }}
+        award={awardForStatus}
+        onSubmit={handleSubmitAwardStatus}
+        isSubmitting={isAwardStatusSubmitting}
       />
     </div>
   );

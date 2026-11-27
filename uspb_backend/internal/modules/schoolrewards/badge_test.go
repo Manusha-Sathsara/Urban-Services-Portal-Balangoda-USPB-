@@ -290,3 +290,84 @@ func TestBadgeService_ExportAwardsCSV(t *testing.T) {
 		t.Errorf("expected AWD-2026-0001 in CSV export, got:\n%s", csvStr)
 	}
 }
+
+func TestBadgeService_UpdateAwardStatus(t *testing.T) {
+	service, _, _ := setupTestBadgeService()
+
+	// 1. Initial state: Award 1 is 'awarded'
+	award1, err := service.GetAwardByID(1, nil)
+	if err != nil {
+		t.Fatalf("failed to get award 1: %v", err)
+	}
+	if award1.Status != "awarded" {
+		t.Fatalf("expected initial status 'awarded', got '%s'", award1.Status)
+	}
+
+	statsBefore, _ := service.GetStats()
+	initialAwardCount := statsBefore.TotalAwards
+
+	// 2. Revoke Award 1
+	revoked, err := service.UpdateAwardStatus(1, &UpdateAwardStatusRequest{
+		Status: "revoked",
+		Reason: "Disciplinary audit finding",
+	}, "supervisor@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to revoke award: %v", err)
+	}
+	if revoked.Status != "revoked" {
+		t.Errorf("expected status 'revoked', got '%s'", revoked.Status)
+	}
+
+	// 3. Verify Stats decreased
+	statsAfter, _ := service.GetStats()
+	if statsAfter.TotalAwards != initialAwardCount-1 {
+		t.Errorf("expected TotalAwards to decrease to %d, got %d", initialAwardCount-1, statsAfter.TotalAwards)
+	}
+
+	// 4. Verify Student 1 is no longer considered awarded for Badge 1 in eligibility
+	elig, err := service.GetStudentEligibility(1, 1)
+	if err != nil {
+		t.Fatalf("failed to get eligibility: %v", err)
+	}
+	if elig.IsAwarded {
+		t.Errorf("expected IsAwarded to be false after revocation")
+	}
+
+	// 5. Teacher School Isolation on status change:
+	// Award 3 belongs to Student 6 in School 2.
+	// Teacher from School 1 cannot revoke it.
+	school1ID := 1
+	_, err = service.UpdateAwardStatus(3, &UpdateAwardStatusRequest{
+		Status: "revoked",
+		Reason: "Illegal attempt",
+	}, "teacher1@balangoda.uc.gov.lk", &school1ID)
+	if !errors.Is(err, ErrUnauthorizedSchoolAccess) {
+		t.Errorf("expected ErrUnauthorizedSchoolAccess on cross-school status update, got: %v", err)
+	}
+
+	// 6. Reinstate Award 1 back to 'awarded'
+	reinstated, err := service.UpdateAwardStatus(1, &UpdateAwardStatusRequest{
+		Status: "awarded",
+		Reason: "Appeal approved by Urban Council Committee",
+	}, "supervisor@balangoda.uc.gov.lk", nil)
+	if err != nil {
+		t.Fatalf("failed to reinstate award: %v", err)
+	}
+	if reinstated.Status != "awarded" {
+		t.Errorf("expected status 'awarded', got '%s'", reinstated.Status)
+	}
+
+	// 7. Verify Stats restored
+	statsFinal, _ := service.GetStats()
+	if statsFinal.TotalAwards != initialAwardCount {
+		t.Errorf("expected TotalAwards to be %d, got %d", initialAwardCount, statsFinal.TotalAwards)
+	}
+
+	// 8. Invalid status rejection
+	_, err = service.UpdateAwardStatus(1, &UpdateAwardStatusRequest{
+		Status: "deleted",
+	}, "supervisor@balangoda.uc.gov.lk", nil)
+	if !errors.Is(err, ErrInvalidAwardStatus) {
+		t.Errorf("expected ErrInvalidAwardStatus for status 'deleted', got: %v", err)
+	}
+}

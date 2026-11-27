@@ -267,6 +267,12 @@ export interface CreateAwardDto {
   notes?: string;
 }
 
+export interface UpdateAwardStatusDto {
+  status: "awarded" | "revoked";
+  reason?: string;
+  notes?: string;
+}
+
 export interface BadgeListResult {
   badges: BadgeDefinition[];
   total_count: number;

@@ -12,6 +12,9 @@ import {
   ChevronRight,
   X,
   Filter,
+  CheckCircle2,
+  Ban,
+  ShieldAlert,
 } from "lucide-react";
 
 interface SchoolOption {
@@ -33,6 +36,8 @@ interface AwardTableProps {
   onSchoolChange: (id?: number) => void;
   selectedBadgeId?: number;
   onBadgeChange: (id?: number) => void;
+  selectedStatus?: "all" | "awarded" | "revoked";
+  onStatusChange?: (status: "all" | "awarded" | "revoked") => void;
   startDate: string;
   onStartDateChange: (val: string) => void;
   endDate: string;
@@ -44,6 +49,7 @@ interface AwardTableProps {
   totalCount: number;
   onPageChange: (p: number) => void;
   onViewDetails: (award: StudentBadgeAward) => void;
+  onChangeStatus?: (award: StudentBadgeAward) => void;
   onExportCsv: () => void;
   onRefresh: () => void;
   onResetFilters?: () => void;
@@ -59,6 +65,8 @@ export function AwardTable({
   onSchoolChange,
   selectedBadgeId,
   onBadgeChange,
+  selectedStatus = "all",
+  onStatusChange,
   startDate,
   onStartDateChange,
   endDate,
@@ -70,6 +78,7 @@ export function AwardTable({
   totalCount,
   onPageChange,
   onViewDetails,
+  onChangeStatus,
   onExportCsv,
   onRefresh,
   onResetFilters,
@@ -79,6 +88,7 @@ export function AwardTable({
     search.trim().length > 0 ||
     selectedSchoolId !== undefined ||
     selectedBadgeId !== undefined ||
+    (selectedStatus && selectedStatus !== "all") ||
     startDate.length > 0 ||
     endDate.length > 0;
 
@@ -134,7 +144,7 @@ export function AwardTable({
         </div>
 
         {/* Filter Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
           {/* School filter */}
           {!isTeacher && (
             <div>
@@ -178,6 +188,25 @@ export function AwardTable({
                   {b.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Status filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-stone-500 mb-1">
+              Filter by Status
+            </label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => {
+                const val = e.target.value as "all" | "awarded" | "revoked";
+                if (onStatusChange) onStatusChange(val);
+              }}
+              className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-800 focus:border-[#800000] focus:outline-none focus:ring-1 focus:ring-[#800000] transition-colors"
+            >
+              <option value="all">All Statuses</option>
+              <option value="awarded">Awarded (Active)</option>
+              <option value="revoked">Revoked Only</option>
             </select>
           </div>
 
@@ -230,6 +259,11 @@ export function AwardTable({
                 Badge ID: {selectedBadgeId}
               </span>
             )}
+            {selectedStatus && selectedStatus !== "all" && (
+              <span className="rounded bg-stone-200 px-2 py-0.5 text-stone-800 font-medium capitalize">
+                Status: {selectedStatus}
+              </span>
+            )}
             {startDate && (
               <span className="rounded bg-stone-200 px-2 py-0.5 text-stone-800 font-medium">
                 From: {startDate}
@@ -275,8 +309,11 @@ export function AwardTable({
               <th scope="col" className="px-4 py-3">
                 Conferred By
               </th>
+              <th scope="col" className="px-4 py-3">
+                Status
+              </th>
               <th scope="col" className="px-4 py-3 text-right">
-                Details
+                Actions
               </th>
             </tr>
           </thead>
@@ -304,14 +341,17 @@ export function AwardTable({
                   <td className="px-4 py-3.5">
                     <div className="h-4 w-24 rounded bg-stone-100" />
                   </td>
+                  <td className="px-4 py-3.5">
+                    <div className="h-4 w-16 rounded-full bg-stone-100" />
+                  </td>
                   <td className="px-4 py-3.5 text-right">
-                    <div className="h-6 w-8 rounded bg-stone-100 ml-auto" />
+                    <div className="h-6 w-12 rounded bg-stone-100 ml-auto" />
                   </td>
                 </tr>
               ))
             ) : awards.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center">
+                <td colSpan={8} className="px-4 py-12 text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 text-stone-400 mb-3">
                     <Award className="h-6 w-6" />
                   </div>
@@ -387,16 +427,51 @@ export function AwardTable({
                     {award.awarded_by}
                   </td>
 
-                  {/* Action */}
+                  {/* Status */}
+                  <td className="px-4 py-3.5 text-xs">
+                    {award.status === "awarded" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Awarded
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
+                        <Ban className="h-3 w-3" />
+                        Revoked
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
                   <td className="px-4 py-3.5 text-right">
-                    <button
-                      onClick={() => onViewDetails(award)}
-                      className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
-                      title="Inspect award record"
-                      aria-label={`View award details for ${award.award_reference}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      {onChangeStatus && (
+                        <button
+                          onClick={() => onChangeStatus(award)}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            award.status === "awarded"
+                              ? "text-stone-400 hover:text-rose-700 hover:bg-rose-50"
+                              : "text-stone-400 hover:text-emerald-700 hover:bg-emerald-50"
+                          }`}
+                          title={
+                            award.status === "awarded"
+                              ? "Revoke award status"
+                              : "Reinstate award status"
+                          }
+                          aria-label={`Change status for ${award.award_reference}`}
+                        >
+                          <ShieldAlert className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onViewDetails(award)}
+                        className="p-1.5 rounded-lg text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+                        title="Inspect award record"
+                        aria-label={`View award details for ${award.award_reference}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

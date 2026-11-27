@@ -155,6 +155,13 @@ type UpdateBadgeStatusRequest struct {
 	Status string `json:"status"` // "active" or "inactive"
 }
 
+// UpdateAwardStatusRequest is used to change the status of an existing badge award (e.g. awarded <-> revoked)
+type UpdateAwardStatusRequest struct {
+	Status string `json:"status"` // "awarded" or "revoked"
+	Reason string `json:"reason"` // Official reason / justification
+	Notes  string `json:"notes,omitempty"`
+}
+
 // CreateAwardRequest represents the council supervisor's intent to record a badge award
 type CreateAwardRequest struct {
 	StudentID int    `json:"student_id"`
@@ -206,6 +213,7 @@ type EligibilityListResult struct {
 type AwardListFilter struct {
 	SchoolID  *int   // Forced for teachers
 	BadgeID   *int   // Optional filter by badge
+	Status    string // "all", "awarded", "revoked"
 	Search    string // Student name, identifier, or award reference
 	StartDate string // YYYY-MM-DD
 	EndDate   string // YYYY-MM-DD

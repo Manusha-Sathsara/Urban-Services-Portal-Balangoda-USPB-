@@ -542,6 +542,48 @@ func (m *memoryBadgeRepository) CreateAward(award *StudentBadgeAward, performedB
 	return nil
 }
 
+func (m *memoryBadgeRepository) UpdateAwardStatus(id int, status, notes, performedBy, reason string) (*StudentBadgeAward, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	award, ok := m.awards[id]
+	if !ok {
+		return nil, sql.ErrNoRows
+	}
+
+	prevStatus := award.Status
+	award.Status = status
+	if strings.TrimSpace(notes) != "" {
+		award.Notes = strings.TrimSpace(notes)
+	}
+	now := time.Now()
+	award.UpdatedAt = now
+
+	action := "AWARD_STATUS_CHANGED"
+	if status == "revoked" {
+		action = "AWARD_REVOKED"
+	} else if status == "awarded" && prevStatus == "revoked" {
+		action = "AWARD_REINSTATED"
+	}
+
+	m.auditLogs = append(m.auditLogs, struct {
+		awardID     int
+		action      string
+		performedBy string
+		details     string
+		createdAt   time.Time
+	}{
+		awardID:     id,
+		action:      action,
+		performedBy: performedBy,
+		details:     fmt.Sprintf("Status changed from '%s' to '%s'. Reason: %s", prevStatus, status, reason),
+		createdAt:   now,
+	})
+
+	copied := *award
+	return &copied, nil
+}
+
 func (m *memoryBadgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -554,6 +596,12 @@ func (m *memoryBadgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentB
 
 		if filter.BadgeID != nil && *filter.BadgeID > 0 && a.BadgeID != *filter.BadgeID {
 			continue
+		}
+
+		if strings.TrimSpace(filter.Status) != "" && strings.ToLower(strings.TrimSpace(filter.Status)) != "all" {
+			if !strings.EqualFold(a.Status, strings.TrimSpace(filter.Status)) {
+				continue
+			}
 		}
 
 		if strings.TrimSpace(filter.Search) != "" {

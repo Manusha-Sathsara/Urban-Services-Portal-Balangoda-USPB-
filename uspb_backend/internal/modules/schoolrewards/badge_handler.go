@@ -35,6 +35,8 @@ func (h *BadgeHandler) RegisterRoutes(router fiber.Router) {
 	badges.Get("/awards/export/csv", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.ExportAwardsCSV)
 	badges.Get("/awards/:id", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.GetAwardByID)
 	badges.Post("/awards", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.CreateAward)
+	badges.Patch("/awards/:id/status", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.UpdateAwardStatus)
+	badges.Put("/awards/:id/status", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.UpdateAwardStatus)
 
 	// 2. Badge Catalog inspection (all authorized roles can view)
 	badges.Get("/", middleware.RequireRoles("ADMIN", "GARBAGE_SUPERVISOR", "TEACHER"), h.List)
@@ -351,6 +353,7 @@ func (h *BadgeHandler) ListAwards(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	search := c.Query("search", "")
+	status := c.Query("status", "")
 	startDate := c.Query("start_date", "")
 	endDate := c.Query("end_date", "")
 
@@ -384,6 +387,7 @@ func (h *BadgeHandler) ListAwards(c *fiber.Ctx) error {
 	filter := AwardListFilter{
 		SchoolID:  schoolIDPtr,
 		BadgeID:   badgeIDPtr,
+		Status:    status,
 		Search:    search,
 		StartDate: startDate,
 		EndDate:   endDate,
@@ -429,6 +433,7 @@ func (h *BadgeHandler) GetAwardByID(c *fiber.Ctx) error {
 // ExportAwardsCSV generates a downloadable CSV of award records
 func (h *BadgeHandler) ExportAwardsCSV(c *fiber.Ctx) error {
 	search := c.Query("search", "")
+	status := c.Query("status", "")
 	startDate := c.Query("start_date", "")
 	endDate := c.Query("end_date", "")
 
@@ -457,6 +462,7 @@ func (h *BadgeHandler) ExportAwardsCSV(c *fiber.Ctx) error {
 	filter := AwardListFilter{
 		SchoolID:  schoolIDPtr,
 		BadgeID:   badgeIDPtr,
+		Status:    status,
 		Search:    search,
 		StartDate: startDate,
 		EndDate:   endDate,
@@ -472,4 +478,48 @@ func (h *BadgeHandler) ExportAwardsCSV(c *fiber.Ctx) error {
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 
 	return c.Send(csvData)
+}
+
+// UpdateAwardStatus changes the status of a bestowed badge award (e.g. awarded <-> revoked)
+func (h *BadgeHandler) UpdateAwardStatus(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id <= 0 {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid award ID parameter")
+	}
+
+	var req UpdateAwardStatusRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid request payload format")
+	}
+
+	if strings.TrimSpace(req.Status) == "" {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Status field is required ('awarded' or 'revoked')")
+	}
+
+	role, _ := c.Locals("role").(string)
+	var teacherSchoolIDPtr *int
+	if role == "TEACHER" {
+		tsID, ok := c.Locals("school_id").(int)
+		if ok && tsID > 0 {
+			teacherSchoolIDPtr = &tsID
+		}
+	}
+
+	changedBy := getOperatorIdentifier(c)
+
+	updatedAward, err := h.service.UpdateAwardStatus(id, &req, changedBy, teacherSchoolIDPtr)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrAwardNotFound):
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "Badge award record not found")
+		case errors.Is(err, ErrInvalidAwardStatus):
+			return utils.ErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		case errors.Is(err, ErrUnauthorizedSchoolAccess):
+			return utils.ErrorResponse(c, fiber.StatusForbidden, err.Error())
+		default:
+			return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to update award status: "+err.Error())
+		}
+	}
+
+	return utils.SuccessResponse(c, fiber.StatusOK, "Badge award status updated successfully", updatedAward)
 }

@@ -29,6 +29,7 @@ type BadgeRepository interface {
 
 	// Award operations
 	CreateAward(award *StudentBadgeAward, performedBy string) error
+	UpdateAwardStatus(id int, status, notes, performedBy, reason string) (*StudentBadgeAward, error)
 	GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error)
 	GetAwardByID(id int) (*StudentBadgeAward, error)
 	GetAwardByStudentAndBadge(studentID, badgeID int) (*StudentBadgeAward, error)
@@ -466,6 +467,65 @@ func (r *badgeRepository) CreateAward(award *StudentBadgeAward, performedBy stri
 	return tx.Commit()
 }
 
+func (r *badgeRepository) UpdateAwardStatus(id int, status, notes, performedBy, reason string) (*StudentBadgeAward, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var current struct {
+		ID        int    `db:"id"`
+		Status    string `db:"status"`
+		Notes     string `db:"notes"`
+		BadgeID   int    `db:"badge_id"`
+		StudentID int    `db:"student_id"`
+	}
+	err = tx.Get(&current, "SELECT id, status, notes, badge_id, student_id FROM student_badge_awards WHERE id = $1 FOR UPDATE", id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, fmt.Errorf("failed to get award: %w", err)
+	}
+
+	finalNotes := current.Notes
+	if strings.TrimSpace(notes) != "" {
+		finalNotes = strings.TrimSpace(notes)
+	}
+
+	updateQuery := `
+		UPDATE student_badge_awards
+		SET status = $1, notes = $2, updated_at = NOW()
+		WHERE id = $3
+	`
+	if _, err := tx.Exec(updateQuery, status, finalNotes, id); err != nil {
+		return nil, fmt.Errorf("failed to update award status: %w", err)
+	}
+
+	action := "AWARD_STATUS_CHANGED"
+	if status == "revoked" {
+		action = "AWARD_REVOKED"
+	} else if status == "awarded" && current.Status == "revoked" {
+		action = "AWARD_REINSTATED"
+	}
+
+	details := fmt.Sprintf("Status changed from '%s' to '%s'. Reason: %s", current.Status, status, reason)
+	auditQuery := `
+		INSERT INTO badge_award_audit_logs (award_id, action, performed_by, details, created_at)
+		VALUES ($1, $2, $3, $4, NOW())
+	`
+	if _, err := tx.Exec(auditQuery, id, action, performedBy, details); err != nil {
+		return nil, fmt.Errorf("failed to log award audit: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit award status change: %w", err)
+	}
+
+	return r.GetAwardByID(id)
+}
+
 func (r *badgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentBadgeAward, int, error) {
 	var conditions []string
 	var args []interface{}
@@ -480,6 +540,12 @@ func (r *badgeRepository) GetAllAwards(filter AwardListFilter) ([]StudentBadgeAw
 	if filter.BadgeID != nil && *filter.BadgeID > 0 {
 		conditions = append(conditions, fmt.Sprintf("a.badge_id = $%d", argIdx))
 		args = append(args, *filter.BadgeID)
+		argIdx++
+	}
+
+	if strings.TrimSpace(filter.Status) != "" && strings.ToLower(strings.TrimSpace(filter.Status)) != "all" {
+		conditions = append(conditions, fmt.Sprintf("a.status = $%d", argIdx))
+		args = append(args, strings.ToLower(strings.TrimSpace(filter.Status)))
 		argIdx++
 	}
 
