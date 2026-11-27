@@ -69,14 +69,31 @@ export function exportToCsv(payload: FinancialExportPayload): void {
   // Section 1: Executive KPI Summary
   rows.push("--- 1. EXECUTIVE FINANCIAL SUMMARY ---");
   rows.push("Metric,Value");
-  rows.push(`Total Recycled Value (LKR),${payload.stats.total_recycled_value_lkr}`);
-  rows.push(`Points Liability Incurred (pts),${payload.stats.total_points_liability}`);
-  rows.push(`Disbursed Rewards (LKR),${payload.stats.total_disbursed_lkr}`);
-  rows.push(`Outstanding Balance (LKR),${payload.stats.outstanding_balance_lkr}`);
+  rows.push(`Total Points Earned (pts),${payload.stats.total_points_earned}`);
+  rows.push(`Total Points Redeemed (pts),${payload.stats.total_points_redeemed}`);
+  rows.push(`Total Cash Disbursed (LKR),${payload.stats.total_cash_disbursed_lkr}`);
+  rows.push(`Completed Payouts Count,${payload.stats.completed_payouts_count}`);
   rows.push(`Total Waste Diverted (kg),${payload.stats.total_collected_kg}`);
-  rows.push(`Landfill Avoidance Savings (LKR),${payload.stats.landfill_savings_lkr}`);
+  rows.push(`Estimated Avoided Landfill Costs (LKR),${payload.stats.total_collected_kg * 5.0}`);
   rows.push(`Participating Schools Matching Criteria,${payload.schools.length}`);
   rows.push("");
+
+  // Payment Method Breakdown
+  if (payload.stats.payment_methods_summary && payload.stats.payment_methods_summary.length > 0) {
+    rows.push("--- PAYMENT METHOD BREAKDOWN ---");
+    rows.push("Payment Modality,Voucher Count,Total Disbursed (LKR),Share (%)");
+    payload.stats.payment_methods_summary.forEach((pm) => {
+      rows.push(
+        [
+          escapeCsvField(pm.method_label),
+          pm.count,
+          pm.total_amount_lkr,
+          pm.percentage.toFixed(1) + "%",
+        ].join(",")
+      );
+    });
+    rows.push("");
+  }
 
   // Section 2: School Performance Statements
   rows.push("--- 2. SCHOOL-WISE FINANCIAL STATEMENTS ---");
@@ -230,27 +247,27 @@ export function exportToExcel(payload: FinancialExportPayload): void {
     <Cell ss:StyleID="Header"><Data ss:Type="String">Value</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Recycled Value (LKR)</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${
-      payload.stats.total_recycled_value_lkr
-    }</Data></Cell>
-   </Row>
-   <Row>
-    <Cell ss:StyleID="Bold"><Data ss:Type="String">Points Liability Incurred (pts)</Data></Cell>
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Points Earned (pts)</Data></Cell>
     <Cell ss:StyleID="Number"><Data ss:Type="Number">${
-      payload.stats.total_points_liability
+       payload.stats.total_points_earned
     }</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="Bold"><Data ss:Type="String">Disbursed Rewards (LKR)</Data></Cell>
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Points Redeemed (pts)</Data></Cell>
+    <Cell ss:StyleID="Number"><Data ss:Type="Number">${
+      payload.stats.total_points_redeemed
+    }</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Total Cash Disbursed (LKR)</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${
       payload.stats.total_disbursed_lkr
     }</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="Bold"><Data ss:Type="String">Outstanding Balance Liability (LKR)</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${
-      payload.stats.outstanding_balance_lkr
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Completed Payouts Count</Data></Cell>
+    <Cell ss:StyleID="Number"><Data ss:Type="Number">${
+       payload.stats.completed_payouts_count
     }</Data></Cell>
    </Row>
    <Row>
@@ -260,9 +277,9 @@ export function exportToExcel(payload: FinancialExportPayload): void {
     }</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="Bold"><Data ss:Type="String">Avoided Landfill Tipping Fees (LKR)</Data></Cell>
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Estimated Avoided Landfill Costs (LKR)</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${
-      payload.stats.landfill_savings_lkr
+      payload.stats.total_collected_kg * 5.0
     }</Data></Cell>
    </Row>
    <Row>
@@ -553,28 +570,54 @@ export function exportToPdf(payload: FinancialExportPayload): void {
   <!-- KPI Grid -->
   <div class="kpi-grid">
     <div class="kpi-box">
-      <div class="kpi-label">Recycled Value</div>
-      <div class="kpi-val">${formatLKRStr(payload.stats.total_recycled_value_lkr)}</div>
+      <div class="kpi-label">Total Points Earned</div>
+      <div class="kpi-val">${payload.stats.total_points_earned.toLocaleString("en-LK")} pts</div>
     </div>
     <div class="kpi-box">
-      <div class="kpi-label">Points Liabilities</div>
-      <div class="kpi-val">${payload.stats.total_points_liability.toLocaleString(
-        "en-LK"
-      )} pts</div>
+      <div class="kpi-label">Total Points Redeemed</div>
+      <div class="kpi-val" style="color: #b45309;">${payload.stats.total_points_redeemed.toLocaleString("en-LK")} pts</div>
     </div>
     <div class="kpi-box">
-      <div class="kpi-label">Disbursed Grants</div>
-      <div class="kpi-val" style="color: #047857;">${formatLKRStr(
-        payload.stats.total_disbursed_lkr
-      )}</div>
+      <div class="kpi-label">Total Cash Disbursed</div>
+      <div class="kpi-val" style="color: #047857;">${formatLKRStr(payload.stats.total_cash_disbursed_lkr)}</div>
     </div>
     <div class="kpi-box">
-      <div class="kpi-label">Outstanding Balance</div>
-      <div class="kpi-val" style="color: #b45309;">${formatLKRStr(
-        payload.stats.outstanding_balance_lkr
-      )}</div>
+      <div class="kpi-label">Completed Payouts</div>
+      <div class="kpi-val">${payload.stats.completed_payouts_count} Vouchers</div>
     </div>
   </div>
+
+  ${
+    payload.stats.payment_methods_summary && payload.stats.payment_methods_summary.length > 0
+      ? `
+  <div class="section-title">Payment Method Distribution</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Payment Modality</th>
+        <th class="text-center">Vouchers Count</th>
+        <th class="text-right">Total Disbursed (LKR)</th>
+        <th class="text-right">Percentage Share</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${payload.stats.payment_methods_summary
+        .map(
+          (pm) => `
+      <tr>
+        <td><strong>${escapeXml(pm.method_label)}</strong></td>
+        <td class="text-center">${pm.count}</td>
+        <td class="text-right font-mono" style="color: #047857; font-weight: bold;">${formatLKRStr(
+          pm.total_amount_lkr
+        )}</td>
+        <td class="text-right font-mono">${pm.percentage.toFixed(1)}%</td>
+      </tr>`
+        )
+        .join("")}
+    </tbody>
+  </table>`
+      : ""
+  }
 
   <!-- Section 1: School Statements -->
   <div class="section-title">1. School-wise Financial Performance Statements</div>

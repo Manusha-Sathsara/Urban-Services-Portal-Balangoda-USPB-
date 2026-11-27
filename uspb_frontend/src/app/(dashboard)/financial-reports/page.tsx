@@ -76,12 +76,11 @@ const INITIAL_FILTERS: FinancialFilterState = {
 
 export default function FinancialReportsPage() {
   const [stats, setStats] = useState<FinancialStats>({
-    total_recycled_value_lkr: 0,
-    total_points_liability: 0,
-    total_disbursed_lkr: 0,
-    outstanding_balance_lkr: 0,
+    total_points_earned: 0,
+    total_points_redeemed: 0,
+    total_cash_disbursed_lkr: 0,
+    completed_payouts_count: 0,
     total_collected_kg: 0,
-    landfill_savings_lkr: 0,
     settled_schools_count: 0,
     total_participating_schools: 0,
   });
@@ -299,11 +298,11 @@ export default function FinancialReportsPage() {
       });
   };
 
-  // Settlement rate computation
+  // Institutional settlement rate computation
   const settlementRate =
-    stats.total_recycled_value_lkr > 0
-      ? ((stats.total_disbursed_lkr / stats.total_recycled_value_lkr) * 100).toFixed(1)
-      : "0.0";
+    stats.total_participating_schools > 0
+      ? ((stats.settled_schools_count / stats.total_participating_schools) * 100).toFixed(0)
+      : "0";
 
   // Check if any filter is actively applied
   const isFiltered =
@@ -352,19 +351,19 @@ export default function FinancialReportsPage() {
   };
 
   const handlePrintSchoolStatement = (statement: SchoolFinancialStatement) => {
+    const schoolVouchers = disbursements.filter((d) => d.school_id === statement.school_id);
     exportToPdf({
       stats: {
-        total_recycled_value_lkr: statement.total_value_lkr,
-        total_points_liability: statement.total_points_earned,
-        total_disbursed_lkr: statement.total_disbursed_lkr,
-        outstanding_balance_lkr: statement.pending_balance_lkr,
+        total_points_earned: statement.total_points_earned,
+        total_points_redeemed: schoolVouchers.reduce((acc, d) => acc + d.points_redeemed, 0),
+        total_cash_disbursed_lkr: statement.total_disbursed_lkr,
+        completed_payouts_count: schoolVouchers.length,
         total_collected_kg: statement.total_collections_kg,
-        landfill_savings_lkr: statement.total_collections_kg * 5.0,
         settled_schools_count: statement.settlement_status === "settled" ? 1 : 0,
         total_participating_schools: 1,
       },
       schools: [statement],
-      disbursements: disbursements.filter((d) => d.school_id === statement.school_id),
+      disbursements: schoolVouchers,
       categories,
       filters: appliedFilters,
       selectedSchoolName: statement.school_name,
@@ -413,25 +412,23 @@ export default function FinancialReportsPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 2. Clearly Identified Demonstration Data Banner                    */}
+      {/* 2. Demonstration Financial Data Notice                             */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 shadow-2xs">
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900 shadow-2xs">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 text-amber-900 mt-0.5">
           <Info className="h-4 w-4" />
         </div>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider text-[11px] text-amber-950">
-              Demonstration Data Mode — Stage 6 Export & Telemetry Suite
+              Demonstration Financial Data Notice
             </span>
             <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-              Simulation Baseline
+              Sample Records
             </span>
           </div>
           <p className="text-amber-800 leading-relaxed text-[11px]">
-            The figures, school performance statements, and disbursement audit vouchers below represent the
-            approved demonstration model for the <strong>Balangoda Urban Council School Waste Rewards Programme</strong>.
-            All tables reactively query the local dataset in real time when you apply or reset filters.
+            The records, vouchers, and metrics displayed in this portal represent sample demonstration data for review by Balangoda Urban Council officers. Authoritative financial transactions and actual cash disbursement figures will be integrated after the shared payout and points ledger is finalized with the collection backend.
           </p>
         </div>
       </div>
@@ -525,23 +522,11 @@ export default function FinancialReportsPage() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Total Recycled Value"
-              value={isLoading ? "Loading..." : formatLKR(stats.total_recycled_value_lkr)}
+              label="Total Points Earned"
+              value={isLoading ? "Loading..." : `${stats.total_points_earned.toLocaleString("en-LK")} pts`}
               description={
                 isFiltered
-                  ? "Gross economic worth for selected filter criteria"
-                  : "Gross economic worth of all recovered recyclables (LKR)"
-              }
-              icon={<Coins className="h-5 w-5" />}
-              variant="revenue"
-            />
-
-            <StatCard
-              label="Points Liability Incurred"
-              value={isLoading ? "Loading..." : `${stats.total_points_liability.toLocaleString("en-LK")} pts`}
-              description={
-                isFiltered
-                  ? `Points earned across ${stats.total_participating_schools} matching school(s)`
+                  ? `Points credited across ${stats.total_participating_schools} matching school(s)`
                   : "Total eco-points earned across participating schools"
               }
               icon={<Sparkles className="h-5 w-5" />}
@@ -549,19 +534,27 @@ export default function FinancialReportsPage() {
             />
 
             <StatCard
-              label="Disbursed Rewards"
-              value={isLoading ? "Loading..." : formatLKR(stats.total_disbursed_lkr)}
-              description={`${settlementRate}% settled to educational institutions`}
+              label="Total Points Redeemed"
+              value={isLoading ? "Loading..." : `${stats.total_points_redeemed.toLocaleString("en-LK")} pts`}
+              description="Eco-points redeemed through council disbursement vouchers"
+              icon={<Coins className="h-5 w-5" />}
+              variant="default"
+            />
+
+            <StatCard
+              label="Total Cash Disbursed"
+              value={isLoading ? "Loading..." : formatLKR(stats.total_cash_disbursed_lkr)}
+              description="Total grant funds disbursed to educational institutions"
               icon={<CheckCircle2 className="h-5 w-5" />}
               variant="success"
             />
 
             <StatCard
-              label="Outstanding Balance"
-              value={isLoading ? "Loading..." : formatLKR(stats.outstanding_balance_lkr)}
-              description="Accrued rewards liability pending council disbursement"
-              icon={<AlertCircle className="h-5 w-5" />}
-              variant="warning"
+              label="Completed Payouts"
+              value={isLoading ? "Loading..." : `${stats.completed_payouts_count} Vouchers`}
+              description="Council-approved voucher settlements processed"
+              icon={<Receipt className="h-5 w-5" />}
+              variant="revenue"
             />
           </div>
 
@@ -587,7 +580,7 @@ export default function FinancialReportsPage() {
                 </div>
                 <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
                   <ShieldCheck className="h-3 w-3" />
-                  Verified Demo Model
+                  Environmental Impact
                 </span>
               </div>
 
@@ -610,7 +603,7 @@ export default function FinancialReportsPage() {
                     <Landmark className="h-3.5 w-3.5 text-emerald-700" /> Landfill Savings
                   </span>
                   <p className="mt-1 text-xl font-bold text-emerald-700">
-                    {formatLKR(stats.landfill_savings_lkr)}
+                    {formatLKR(stats.total_collected_kg * 5.0)}
                   </p>
                   <p className="text-[10px] text-stone-500 mt-0.5">
                     Estimated LKR 5.00/kg tipping fee avoided
@@ -625,17 +618,17 @@ export default function FinancialReportsPage() {
                     {settlementRate}%
                   </p>
                   <p className="text-[10px] text-stone-500 mt-0.5">
-                    Disbursed vs gross liability
+                    Participating schools settled
                   </p>
                 </div>
               </div>
 
               <div className="rounded-lg bg-stone-50 p-3 border border-stone-100 text-xs text-stone-600 flex items-center justify-between">
                 <span className="text-stone-500">
-                  Net Council Ecological Benefit (Landfill Savings + Recovered Recyclable Value):
+                  Estimated Municipal Landfill Tipping Cost Avoidance:
                 </span>
                 <span className="font-bold text-stone-900 font-mono text-sm">
-                  {formatLKR(stats.total_recycled_value_lkr + stats.landfill_savings_lkr)}
+                  {formatLKR(stats.total_collected_kg * 5.0)}
                 </span>
               </div>
             </div>
@@ -677,7 +670,7 @@ export default function FinancialReportsPage() {
                       0,
                       stats.total_participating_schools -
                         stats.settled_schools_count -
-                        (stats.outstanding_balance_lkr > 0 && stats.total_disbursed_lkr === 0
+                        ((stats.outstanding_balance_lkr || 0) > 0 && stats.total_cash_disbursed_lkr === 0
                           ? 1
                           : 0)
                     )}{" "}
@@ -691,7 +684,7 @@ export default function FinancialReportsPage() {
                     <span className="font-medium text-stone-800">Pending First Payout</span>
                   </div>
                   <span className="font-bold text-rose-800 font-mono">
-                    {stats.total_disbursed_lkr === 0 && stats.outstanding_balance_lkr > 0
+                    {stats.total_cash_disbursed_lkr === 0 && (stats.outstanding_balance_lkr || 0) > 0
                       ? stats.total_participating_schools
                       : Math.max(0, stats.total_participating_schools - stats.settled_schools_count > 1 ? 1 : 0)}{" "}
                     School(s)
@@ -903,22 +896,7 @@ export default function FinancialReportsPage() {
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* 9. Overview Section Summary / Stage Roadmap Note                   */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 text-xs text-stone-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-[#800000]" />
-          <span>
-            <strong>Stage 7 Verified:</strong> Complete Financial Reports & Payout Statements module end-to-end verified across filters, KPIs, charts, responsive tables, modals, and exports.
-          </span>
-        </div>
-        <span className="text-[11px] text-stone-400 italic">
-          All financial telemetry, interactive filters, audit modals, and multi-format exports production-ready.
-        </span>
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* 10. Interactive Detailed Modals                                    */}
+      {/* 9. Interactive Detailed Modals                                     */}
       {/* ------------------------------------------------------------------ */}
       <SchoolStatementModal
         isOpen={isStatementModalOpen}

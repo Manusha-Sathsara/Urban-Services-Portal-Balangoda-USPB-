@@ -18,6 +18,7 @@ import {
   Calendar,
   UserCheck,
   Download,
+  FileText,
 } from "lucide-react";
 
 // Currency formatter
@@ -69,7 +70,7 @@ export function PayoutSummaryTable({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-stone-900 font-serif">
-                Payout Summary & Voucher Audit Ledger
+                Payout Statement & Voucher Audit Ledger
               </h3>
               <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold border border-emerald-200">
                 {totalCount} Vouchers Recorded
@@ -136,32 +137,32 @@ export function PayoutSummaryTable({
         <table className="w-full text-left text-xs text-stone-600">
           <thead className="border-b border-stone-200 bg-stone-50 text-[10px] font-bold uppercase tracking-wider text-stone-500">
             <tr>
-              <th scope="col" className="px-4 py-3">
+              <th scope="col" className="px-3.5 py-3 whitespace-nowrap">
                 Voucher Reference
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th scope="col" className="px-3 py-3 min-w-[180px]">
                 Beneficiary School
               </th>
-              <th scope="col" className="px-3 py-3 text-right">
+              <th scope="col" className="px-3 py-3 text-right whitespace-nowrap">
                 Points Redeemed
               </th>
-              <th scope="col" className="px-3 py-3 text-right">
-                Disbursed Amount
+              <th scope="col" className="px-3 py-3 text-right whitespace-nowrap">
+                Disbursed Cash
               </th>
-              <th scope="col" className="px-3 py-3 text-center">
+              <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
                 Payment Method
               </th>
-              <th scope="col" className="px-3 py-3 text-center">
-                Disbursement Date
+              <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
+                Date Issued
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th scope="col" className="px-3 py-3 whitespace-nowrap">
                 Authorized By
               </th>
-              <th scope="col" className="px-3 py-3 text-center">
+              <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
                 Status
               </th>
-              <th scope="col" className="px-4 py-3 text-center">
-                Action
+              <th scope="col" className="px-3.5 py-3 text-center whitespace-nowrap">
+                Actions
               </th>
             </tr>
           </thead>
@@ -182,7 +183,7 @@ export function PayoutSummaryTable({
                     <AlertCircle className="h-6 w-6 text-stone-400" />
                     <p className="font-semibold text-stone-800 text-xs">No payout disbursements match filter</p>
                     <p className="text-[11px] text-stone-400 max-w-sm mx-auto">
-                      No voucher disbursements found. Schools with &quot;Pending First Disbursement&quot; have not yet received grants.
+                      No voucher disbursements found for the current reporting filter criteria.
                     </p>
                   </div>
                 </td>
@@ -197,47 +198,42 @@ export function PayoutSummaryTable({
                     className="hover:bg-stone-50/80 transition-colors"
                   >
                     {/* Voucher Reference */}
-                    <td className="px-4 py-3.5">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <FileCheck2 className="h-4 w-4 text-[#800000] shrink-0" />
-                        <span className="font-mono font-bold text-stone-900 text-xs">
+                        <FileCheck2 className="h-3.5 w-3.5 text-[#800000] shrink-0" />
+                        <span className="font-mono font-bold text-stone-900 text-xs bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
                           {voucher.voucher_reference}
                         </span>
                       </div>
-                      {voucher.notes && (
-                        <p className="text-[10px] text-stone-500 truncate max-w-xs pl-5.5 mt-0.5">
-                          {voucher.notes}
-                        </p>
-                      )}
                     </td>
 
                     {/* School Beneficiary */}
-                    <td className="px-3 py-3.5">
+                    <td className="px-3 py-3">
                       <div className="space-y-0.5">
-                        <span className="font-semibold text-stone-900 text-xs hover:text-[#800000] transition-colors block">
+                        <span className="font-semibold text-stone-900 text-xs block leading-tight">
                           {voucher.school_name}
                         </span>
-                        <span className="font-mono text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200">
+                        <span className="font-mono text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200 inline-block">
                           {voucher.school_code}
                         </span>
                       </div>
                     </td>
 
                     {/* Points Redeemed */}
-                    <td className="px-3 py-3.5 text-right font-medium text-stone-900 font-mono">
-                      <span className="inline-flex items-center gap-1">
+                    <td className="px-3 py-3 text-right font-medium font-mono whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 text-amber-800 font-semibold text-xs">
                         <Sparkles className="h-3 w-3 text-amber-600" />
                         {voucher.points_redeemed.toLocaleString("en-LK")}
                       </span>
                     </td>
 
                     {/* Disbursed Amount */}
-                    <td className="px-3 py-3.5 text-right font-bold text-emerald-800 font-mono text-xs">
+                    <td className="px-3 py-3 text-right font-bold text-emerald-800 font-mono text-xs whitespace-nowrap">
                       {formatLKR(voucher.amount_lkr)}
                     </td>
 
                     {/* Payment Method */}
-                    <td className="px-3 py-3.5 text-center">
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
                       {method === "bank_transfer" ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-800 border border-sky-200">
                           <Building2 className="h-3 w-3 text-sky-600" />
@@ -251,13 +247,13 @@ export function PayoutSummaryTable({
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-200">
                           <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                          Eco-Grant Voucher
+                          Eco-Grant
                         </span>
                       )}
                     </td>
 
                     {/* Disbursement Date */}
-                    <td className="px-3 py-3.5 text-center font-mono text-[11px] text-stone-600">
+                    <td className="px-3 py-3 text-center font-mono text-[11px] text-stone-600 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3 w-3 text-stone-400" />
                         {voucher.disbursement_date}
@@ -265,15 +261,15 @@ export function PayoutSummaryTable({
                     </td>
 
                     {/* Authorized Officer */}
-                    <td className="px-3 py-3.5">
-                      <div className="flex items-center gap-1 text-[11px] text-stone-600 truncate max-w-xs font-mono">
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-[11px] text-stone-600 font-mono truncate max-w-[140px]" title={voucher.authorized_by}>
                         <UserCheck className="h-3 w-3 text-stone-400 shrink-0" />
                         <span className="truncate">{voucher.authorized_by}</span>
                       </div>
                     </td>
 
                     {/* Status */}
-                    <td className="px-3 py-3.5 text-center">
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
                         <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                         Disbursed
@@ -281,15 +277,15 @@ export function PayoutSummaryTable({
                     </td>
 
                     {/* Action */}
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => onViewVoucher && onViewVoucher(voucher)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-stone-700 hover:bg-stone-50 hover:text-[#800000] hover:border-[#800000]/30 transition-colors cursor-pointer"
-                        title="View Disbursement Voucher Details"
+                        className="inline-flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-stone-700 hover:bg-[#800000] hover:text-white hover:border-[#800000] transition-colors cursor-pointer shadow-2xs"
+                        title="View Voucher Details"
                       >
-                        <Receipt className="h-3.5 w-3.5 text-[#800000]" />
-                        <span>Voucher</span>
+                        <FileText className="h-3 w-3" />
+                        <span>View Details</span>
                       </button>
                     </td>
                   </tr>
@@ -309,7 +305,7 @@ export function PayoutSummaryTable({
           </span>
           <span className="text-stone-300">|</span>
           <span className="font-semibold text-stone-700">
-            Current Filter Sum:{" "}
+            Filtered Disbursed Total:{" "}
             <strong className="text-emerald-800 font-bold font-mono">
               {formatLKR(totalDisbursedSum)}
             </strong>

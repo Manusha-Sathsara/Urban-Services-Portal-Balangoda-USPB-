@@ -10,7 +10,8 @@ import { MonthlyPayoutTrendChart } from "./MonthlyPayoutTrendChart";
 import { MonthlyPointsTrendChart } from "./MonthlyPointsTrendChart";
 import { SchoolComparisonChart } from "./SchoolComparisonChart";
 import { PayoutStatusChart } from "./PayoutStatusChart";
-import { BarChart3, TrendingUp, Sparkles, Filter } from "lucide-react";
+import { PaymentMethodSummaryChart } from "./PaymentMethodSummaryChart";
+import { BarChart3, Filter } from "lucide-react";
 
 export interface FinancialChartsSectionProps {
   stats: FinancialStats;
@@ -40,7 +41,7 @@ export function FinancialChartsSection({
               Financial Trends & Institutional Analytics
             </h3>
             <p className="text-[11px] text-stone-500">
-              Visual telemetry of monthly disbursement velocities, points liquidations, and school performance
+              Visual telemetry of monthly disbursement velocities, points liquidations, and payment methods
             </p>
           </div>
         </div>
@@ -53,19 +54,24 @@ export function FinancialChartsSection({
         )}
       </div>
 
-      {/* 2x2 Responsive Charts Grid */}
+      {/* Responsive Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 1: Monthly Cash Payout Trends */}
         <MonthlyPayoutTrendChart data={trends} isLoading={isLoading} />
 
-        {/* Chart 2: Monthly Points Redemption Trends */}
-        <MonthlyPointsTrendChart data={trends} isLoading={isLoading} />
-
-        {/* Chart 3: School-wise Financial Comparison */}
+        {/* Chart 2: School-wise Financial Comparison */}
         <SchoolComparisonChart schools={schools} isLoading={isLoading} />
 
-        {/* Chart 4: Payout Settlement Status Distribution */}
-        <PayoutStatusChart stats={stats} isLoading={isLoading} />
+        {/* Chart 3: Payment Method Summary Breakdown */}
+        <PaymentMethodSummaryChart stats={stats} isLoading={isLoading} />
+
+        {/* Chart 4: Monthly Points Redemption Trends */}
+        <MonthlyPointsTrendChart data={trends} isLoading={isLoading} />
+
+        {/* Chart 5: Payout Settlement Status Distribution (spanning both columns on wide screens) */}
+        <div className="lg:col-span-2">
+          <PayoutStatusChart stats={stats} isLoading={isLoading} />
+        </div>
       </div>
     </div>
   );

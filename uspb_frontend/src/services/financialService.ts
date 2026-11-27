@@ -18,14 +18,41 @@ import {
 // ============================================================================
 
 const BASELINE_FINANCIAL_STATS: FinancialStats = {
+  total_points_earned: 323500.0,
+  total_points_redeemed: 196666.0,
+  total_cash_disbursed_lkr: 295000.0,
+  completed_payouts_count: 3,
+  total_collected_kg: 28450.0,
+  settled_schools_count: 2,
+  total_participating_schools: 5,
+  payment_methods_summary: [
+    {
+      method: "cheque",
+      method_label: "Council Cheque",
+      count: 1,
+      total_amount_lkr: 146160.0,
+      percentage: 49.5,
+    },
+    {
+      method: "bank_transfer",
+      method_label: "Direct Bank Transfer",
+      count: 1,
+      total_amount_lkr: 120000.0,
+      percentage: 40.7,
+    },
+    {
+      method: "eco_grant",
+      method_label: "Eco-Grant Voucher",
+      count: 1,
+      total_amount_lkr: 28840.0,
+      percentage: 9.8,
+    },
+  ],
   total_recycled_value_lkr: 485250.0,
   total_points_liability: 323500.0,
   total_disbursed_lkr: 295000.0,
   outstanding_balance_lkr: 190250.0,
-  total_collected_kg: 28450.0,
   landfill_savings_lkr: 142250.0,
-  settled_schools_count: 2,
-  total_participating_schools: 5,
 };
 
 const BASELINE_SCHOOL_STATEMENTS: SchoolFinancialStatement[] = [
@@ -306,24 +333,89 @@ export const financialService = {
       );
     }
 
-    const total_recycled_value_lkr = filteredSchools.reduce((acc, s) => acc + s.total_value_lkr, 0);
-    const total_points_liability = filteredSchools.reduce((acc, s) => acc + s.total_points_earned, 0);
-    const total_disbursed_lkr = filteredSchools.reduce((acc, s) => acc + s.total_disbursed_lkr, 0);
-    const outstanding_balance_lkr = filteredSchools.reduce((acc, s) => acc + s.pending_balance_lkr, 0);
+    let filteredDisbursements = [...BASELINE_DISBURSEMENTS];
+    if (params.school_id) {
+      filteredDisbursements = filteredDisbursements.filter(
+        (d) => d.school_id === Number(params.school_id)
+      );
+    }
+    if (params.status && params.status !== "all") {
+      if (params.status === "pending") {
+        filteredDisbursements = [];
+      } else if (params.status === "settled") {
+        filteredDisbursements = filteredDisbursements.filter((d) => d.school_id === 2);
+      } else if (params.status === "partial") {
+        filteredDisbursements = filteredDisbursements.filter(
+          (d) => d.school_id === 1 || d.school_id === 3
+        );
+      }
+    }
+    if (params.start_date) {
+      filteredDisbursements = filteredDisbursements.filter(
+        (d) => d.disbursement_date >= params.start_date!
+      );
+    }
+    if (params.end_date) {
+      filteredDisbursements = filteredDisbursements.filter(
+        (d) => d.disbursement_date <= params.end_date!
+      );
+    }
+
+    const total_points_earned = filteredSchools.reduce((acc, s) => acc + s.total_points_earned, 0);
+    const total_points_redeemed = filteredDisbursements.reduce((acc, d) => acc + d.points_redeemed, 0);
+    const total_cash_disbursed_lkr = filteredDisbursements.reduce((acc, d) => acc + d.amount_lkr, 0);
+    const completed_payouts_count = filteredDisbursements.length;
     const total_collected_kg = filteredSchools.reduce((acc, s) => acc + s.total_collections_kg, 0);
-    const landfill_savings_lkr = total_collected_kg * 5.0;
     const settled_schools_count = filteredSchools.filter((s) => s.settlement_status === "settled").length;
     const total_participating_schools = filteredSchools.length;
 
+    // Payment method breakdown derived from matching disbursements
+    const methodMap = new Map<string, { count: number; total_amount_lkr: number; label: string }>();
+    methodMap.set("cheque", { count: 0, total_amount_lkr: 0, label: "Council Cheque" });
+    methodMap.set("bank_transfer", { count: 0, total_amount_lkr: 0, label: "Direct Bank Transfer" });
+    methodMap.set("eco_grant", { count: 0, total_amount_lkr: 0, label: "Eco-Grant Voucher" });
+
+    filteredDisbursements.forEach((d) => {
+      const entry = methodMap.get(d.payment_method);
+      if (entry) {
+        entry.count += 1;
+        entry.total_amount_lkr += d.amount_lkr;
+      }
+    });
+
+    const payment_methods_summary = Array.from(methodMap.entries())
+      .filter(([_, val]) => val.count > 0 || total_cash_disbursed_lkr === 0)
+      .map(([method, val]) => ({
+        method: method as any,
+        method_label: val.label,
+        count: val.count,
+        total_amount_lkr: val.total_amount_lkr,
+        percentage:
+          total_cash_disbursed_lkr > 0
+            ? Math.round((val.total_amount_lkr / total_cash_disbursed_lkr) * 1000) / 10
+            : 0,
+      }));
+
+    const total_recycled_value_lkr = filteredSchools.reduce((acc, s) => acc + s.total_value_lkr, 0);
+    const total_points_liability = total_points_earned;
+    const total_disbursed_lkr = total_cash_disbursed_lkr;
+    const outstanding_balance_lkr = filteredSchools.reduce((acc, s) => acc + s.pending_balance_lkr, 0);
+    const landfill_savings_lkr = total_collected_kg * 5.0;
+
     return {
+      total_points_earned,
+      total_points_redeemed,
+      total_cash_disbursed_lkr,
+      completed_payouts_count,
+      total_collected_kg,
+      settled_schools_count,
+      total_participating_schools,
+      payment_methods_summary,
       total_recycled_value_lkr,
       total_points_liability,
       total_disbursed_lkr,
       outstanding_balance_lkr,
-      total_collected_kg,
       landfill_savings_lkr,
-      settled_schools_count,
-      total_participating_schools,
     };
   },
 

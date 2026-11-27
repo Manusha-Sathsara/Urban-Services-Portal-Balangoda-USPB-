@@ -28,9 +28,9 @@ export function PayoutStatusChart({
   const pendingCount = Math.max(0, total - settledCount - partialCount);
 
   const settlementRate =
-    stats.total_recycled_value_lkr > 0
-      ? ((stats.total_disbursed_lkr / stats.total_recycled_value_lkr) * 100).toFixed(1)
-      : "0.0";
+    total > 0
+      ? ((settledCount / total) * 100).toFixed(0)
+      : "0";
 
   // Donut SVG parameters
   const size = 160;
@@ -165,7 +165,7 @@ export function PayoutStatusChart({
                   Fully Settled
                 </span>
                 <span className="text-[10px] text-stone-500 font-mono">
-                  {formatLKR(stats.total_disbursed_lkr)} disbursed
+                  {formatLKR(stats.total_cash_disbursed_lkr || stats.total_disbursed_lkr || 0)} disbursed
                 </span>
               </div>
             </div>
@@ -201,7 +201,7 @@ export function PayoutStatusChart({
                   Pending Payout
                 </span>
                 <span className="text-[10px] text-stone-500 font-mono">
-                  {formatLKR(stats.outstanding_balance_lkr)} liability
+                  {formatLKR(stats.outstanding_balance_lkr || 0)} pending
                 </span>
               </div>
             </div>
@@ -215,7 +215,7 @@ export function PayoutStatusChart({
       <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500">
         <span>Target: 100% Payout Liquidation</span>
         <span className="font-semibold text-stone-800 font-mono">
-          Total Liability: {formatLKR(stats.total_recycled_value_lkr)}
+          Total Disbursed: {formatLKR(stats.total_cash_disbursed_lkr || stats.total_disbursed_lkr || 0)}
         </span>
       </div>
     </div>

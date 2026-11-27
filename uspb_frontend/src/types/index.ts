@@ -310,15 +310,29 @@ export interface AwardListResult {
 // FINANCIAL REPORTS MODULE TYPES
 // ==========================================
 
+export interface PaymentMethodBreakdown {
+  method: PaymentMethod;
+  method_label: string;
+  count: number;
+  total_amount_lkr: number;
+  percentage: number;
+}
+
 export interface FinancialStats {
-  total_recycled_value_lkr: number;
-  total_points_liability: number;
-  total_disbursed_lkr: number;
-  outstanding_balance_lkr: number;
+  total_points_earned: number;
+  total_points_redeemed: number;
+  total_cash_disbursed_lkr: number;
+  completed_payouts_count: number;
   total_collected_kg: number;
-  landfill_savings_lkr: number;
   settled_schools_count: number;
   total_participating_schools: number;
+  payment_methods_summary?: PaymentMethodBreakdown[];
+  // Legacy / contextual metrics
+  total_recycled_value_lkr?: number;
+  total_points_liability?: number;
+  total_disbursed_lkr?: number;
+  outstanding_balance_lkr?: number;
+  landfill_savings_lkr?: number;
 }
 
 export type SettlementStatus = "settled" | "partial" | "pending";
