@@ -269,3 +269,46 @@ func TestHandler_Create(t *testing.T) {
 		}
 	})
 }
+
+func TestHandler_RunExpiryCheck(t *testing.T) {
+	t.Run("returns 200 OK with expired certificate count", func(t *testing.T) {
+		svc := &mockService{expiryCount: 4}
+		app := setupTestApp(svc)
+
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs/check-expiry", nil)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusOK {
+			t.Errorf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), `"expired_count":4`) {
+			t.Errorf("expected response body to contain '\"expired_count\":4', got %s", string(body))
+		}
+		if !strings.Contains(string(body), "Environmental certificate expiry check completed") {
+			t.Errorf("expected completion message in response body, got %s", string(body))
+		}
+	})
+
+	t.Run("returns 500 Internal Server Error when expiry scan fails", func(t *testing.T) {
+		svc := &mockService{expiryCheckErr: errors.New("expiry scan database error")}
+		app := setupTestApp(svc)
+
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs/check-expiry", nil)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "expiry scan database error") {
+			t.Errorf("expected error message in response body, got %s", string(body))
+		}
+	})
+}
