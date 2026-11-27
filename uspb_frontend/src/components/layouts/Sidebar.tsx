@@ -1,12 +1,14 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Award,
+  Banknote,
   FileSpreadsheet,
   FolderKanban,
+  History,
   LayoutDashboard,
   Recycle,
   School,
@@ -44,16 +46,50 @@ function NavIcon({ name }: { name?: string }) {
       return <Settings className={cls} strokeWidth={stroke} />;
     case "FolderKanban":
       return <FolderKanban className={cls} strokeWidth={stroke} />;
+    case "Banknote":
+      return <Banknote className={cls} strokeWidth={stroke} />;
+    case "History":
+      return <History className={cls} strokeWidth={stroke} />;
     default:
       return <LayoutDashboard className={cls} strokeWidth={stroke} />;
   }
 }
 
-export function Sidebar() {
+function isItemActive(pathname: string, searchTab: string | null, href: string): boolean {
+  if (href.includes("?tab=")) {
+    const [path, query] = href.split("?");
+    const targetTab = new URLSearchParams(query).get("tab");
+    if (pathname === path) {
+      return (searchTab || "students") === targetTab;
+    }
+    return false;
+  }
+  return isNavItemActive(pathname, href);
+}
+
+function SidebarNavContent() {
   const pathname = usePathname();
-  const config = getServiceConfig(pathname);
+  const searchParams = useSearchParams();
+  const searchTab = searchParams.get("tab");
   const { user, logout } = useAuth();
+  const config = getServiceConfig(pathname, user?.role);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const visibleItems = config.navItems.filter(
+    (item) => !item.roles || (user && item.roles.includes(user.role))
+  );
+
+  // Preserve order while grouping by optional section header
+  const sections: Array<{ group: string; items: NavItem[] }> = [];
+  for (const item of visibleItems) {
+    const grp = item.group || config.navSectionLabel;
+    const existing = sections.find((s) => s.group === grp);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      sections.push({ group: grp, items: [item] });
+    }
+  }
 
   return (
     <>
@@ -77,58 +113,59 @@ export function Sidebar() {
           isMobileOpen ? "flex" : "hidden md:flex"
         }`}
       >
-        <div>
-          <div className="mb-3 px-3 flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#8a5a58]">
-              {config.navSectionLabel}
-            </span>
-            <span className="text-[11px] rounded bg-[#f0e0df] px-1.5 py-0.5 font-mono font-medium text-[#5a0000]">
-              USPB
-            </span>
-          </div>
+        <div className="space-y-5">
+          {sections.map((section) => (
+            <div key={section.group}>
+              <div className="mb-2 px-3 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-[#8a5a58]">
+                  {section.group}
+                </span>
+              </div>
 
-          <nav className="space-y-1" aria-label={`${config.serviceName} navigation`}>
-            {config.navItems.map((item: NavItem) => {
-              const isActive = isNavItemActive(pathname, item.href);
-              const isPlaceholder = item.href === "#";
+              <nav className="space-y-1" aria-label={section.group}>
+                {section.items.map((item) => {
+                  const active = isItemActive(pathname, searchTab, item.href);
+                  const isPlaceholder = item.href === "#";
 
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => {
-                    if (isPlaceholder) e.preventDefault();
-                    setIsMobileOpen(false);
-                  }}
-                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-[#800000] text-white"
-                      : isPlaceholder
-                      ? "text-[#8a5a58] hover:bg-[#f0e0df]/40"
-                      : "text-[#5a0000] hover:bg-[#f0e0df]/70"
-                  }`}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <NavIcon name={item.icon} />
-                    <span className="truncate">{item.name}</span>
-                  </div>
-
-                  {item.badge && (
-                    <span
-                      className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-[#fbbf24]/20 text-[#5a3a00]"
+                  return (
+                    <Link
+                      key={`${section.group}-${item.name}`}
+                      href={item.href}
+                      onClick={(e) => {
+                        if (isPlaceholder) e.preventDefault();
+                        setIsMobileOpen(false);
+                      }}
+                      className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-[#800000] text-white"
+                          : isPlaceholder
+                          ? "text-[#8a5a58] hover:bg-[#f0e0df]/40"
+                          : "text-[#5a0000] hover:bg-[#f0e0df]/70"
                       }`}
+                      aria-current={active ? "page" : undefined}
                     >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <NavIcon name={item.icon} />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+
+                      {item.badge && (
+                        <span
+                          className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            active
+                              ? "bg-white/20 text-white"
+                              : "bg-[#fbbf24]/20 text-[#5a3a00]"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
         </div>
 
         {user && (
@@ -157,6 +194,14 @@ export function Sidebar() {
         )}
       </aside>
     </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <Suspense fallback={<aside className="hidden md:block w-64 shrink-0 border-r border-[#f0e6e5] bg-white p-4" />}>
+      <SidebarNavContent />
+    </Suspense>
   );
 }
 

@@ -11,7 +11,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#fcf8f7] text-[#4a4a4a]">
+    <div className="landing-serif min-h-screen flex flex-col bg-[#fcf8f7] text-[#4a4a4a]">
       <LandingNavbar />
       <NoticeBanner />
       <main className="flex-1">

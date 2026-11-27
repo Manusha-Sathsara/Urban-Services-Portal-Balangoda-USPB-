@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { Banknote, CheckCircle2, Plus, Recycle, RotateCcw, Trash2, Users } from "lucide-react";
+import { Banknote, CheckCircle2, FolderKanban, Plus, Recycle, RotateCcw, Trash2, Users } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ApiResponse } from "@/types";
@@ -79,11 +80,21 @@ interface DashboardSummary {
   total_collections: number;
 }
 
-type TabKey = "students" | "collect" | "payouts" | "history";
+type TabKey = "students" | "classes" | "collect" | "payouts" | "history";
 
-export default function TeacherWorkspacePage() {
+function TeacherWorkspaceContent() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<TabKey>("students");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get("tab") as TabKey | null;
+  const tab: TabKey =
+    urlTab && ["students", "classes", "collect", "payouts", "history"].includes(urlTab)
+      ? urlTab
+      : "students";
+  const setTab = (next: TabKey) => {
+    router.replace(`/schools/teacher?tab=${next}`);
+  };
+  const [classFilter, setClassFilter] = useState<string>("");
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [students, setStudents] = useState<SchoolStudent[]>([]);
   const [categories, setCategories] = useState<ActiveCategory[]>([]);
@@ -341,11 +352,38 @@ export default function TeacherWorkspacePage() {
 
   const filteredStudents = students.filter((s) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch =
       s.full_name.toLowerCase().includes(q) ||
-      s.membership_no.toLowerCase().includes(q)
-    );
+      s.membership_no.toLowerCase().includes(q);
+    const classKey = [s.grade, s.class_name].filter(Boolean).join(" · ") || "Unassigned";
+    const matchesClass = !classFilter || classKey === classFilter;
+    return matchesSearch && matchesClass;
   });
+
+  const classGroups = Object.values(
+    students.reduce<
+      Record<
+        string,
+        { key: string; grade: string; className: string; count: number; active: number; totalPts: number }
+      >
+    >((acc, s) => {
+      const key = [s.grade, s.class_name].filter(Boolean).join(" · ") || "Unassigned";
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          grade: s.grade || "—",
+          className: s.class_name || "—",
+          count: 0,
+          active: 0,
+          totalPts: 0,
+        };
+      }
+      acc[key].count += 1;
+      if (s.is_active) acc[key].active += 1;
+      acc[key].totalPts += s.available_points;
+      return acc;
+    }, {})
+  );
 
   return (
     <div className="space-y-6">
@@ -428,6 +466,7 @@ export default function TeacherWorkspacePage() {
         {(
           [
             { key: "students", label: "Students & balances", icon: Users },
+            { key: "classes", label: "Class management", icon: FolderKanban },
             { key: "collect", label: "Record collection", icon: Recycle },
             { key: "payouts", label: "Redemptions & payouts", icon: Banknote },
             { key: "history", label: "Collection history", icon: RotateCcw },
@@ -457,13 +496,24 @@ export default function TeacherWorkspacePage() {
       {tab === "students" && (
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <input
-              type="search"
-              placeholder="Search student or membership no"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-72 rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-xs focus:border-[#800000] focus:outline-none"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                placeholder="Search student or membership no"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full sm:w-72 rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-xs focus:border-[#800000] focus:outline-none"
+              />
+              {classFilter && (
+                <button
+                  type="button"
+                  onClick={() => setClassFilter("")}
+                  className="rounded-lg border border-[#dcc6c4] bg-[#faf4f3] px-3 py-2 text-xs font-medium text-[#5a0000]"
+                >
+                  Class: {classFilter} ×
+                </button>
+              )}
+            </div>
             {!showStudentForm && (
               <button
                 type="button"
@@ -716,7 +766,58 @@ export default function TeacherWorkspacePage() {
         </div>
       )}
 
-      {/* TAB 2: RECORD COLLECTION */}
+      {/* TAB 2: CLASS MANAGEMENT */}
+      {tab === "classes" && (
+        <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#faf4f3] text-[#5a0000]">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Grade</th>
+                <th className="px-4 py-3 font-semibold">Class</th>
+                <th className="px-4 py-3 font-semibold text-right">Students</th>
+                <th className="px-4 py-3 font-semibold text-right">Active</th>
+                <th className="px-4 py-3 font-semibold text-right">Available Points</th>
+                <th className="px-4 py-3 font-semibold text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#f0e6e5]">
+              {classGroups.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-[#8a5a58]">
+                    No classes found. Register students to populate classes.
+                  </td>
+                </tr>
+              ) : (
+                classGroups.map((cg) => (
+                  <tr key={cg.key} className="hover:bg-[#fcf8f7]">
+                    <td className="px-4 py-3 font-medium text-[#1b1c1c]">{cg.grade}</td>
+                    <td className="px-4 py-3 text-[#5a413d]">{cg.className}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{cg.count}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{cg.active}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[#5a0000]">
+                      {cg.totalPts.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClassFilter(cg.key);
+                          setTab("students");
+                        }}
+                        className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+                      >
+                        View Students
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* TAB 3: RECORD COLLECTION */}
       {tab === "collect" && (
         <form
           onSubmit={handleRecordCollection}
@@ -960,5 +1061,19 @@ export default function TeacherWorkspacePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TeacherWorkspacePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[#5a0000]">
+          Loading workspace...
+        </div>
+      }
+    >
+      <TeacherWorkspaceContent />
+    </Suspense>
   );
 }

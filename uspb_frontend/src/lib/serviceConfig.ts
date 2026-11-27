@@ -14,15 +14,21 @@
  * dynamic route-based UI presentation without duplicating detection logic.
  */
 
+import { UserRole } from "@/types";
+
 export interface NavItem {
   /** Label shown in the sidebar */
   name: string;
   /** Next.js destination route or '#' if page is not yet implemented */
   href: string;
-  /** Optional icon (emoji or SVG identifier) */
+  /** Optional icon identifier */
   icon?: string;
   /** Optional status badge */
   badge?: string;
+  /** Optional roles allowed to see this item (omitted = all roles in config) */
+  roles?: UserRole[];
+  /** Optional sidebar section group header */
+  group?: string;
 }
 
 export interface ServiceConfig {
@@ -135,36 +141,91 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
   defaultUserName: "Eco-Rewards Coordinator",
   navSectionLabel: "School Programme",
   navItems: [
+    // Teacher workspace items
     {
-      name: "Teacher Workspace",
-      href: "/schools/teacher",
+      name: "Student Management",
+      href: "/schools/teacher?tab=students",
       icon: "Users",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
     },
     {
-      name: "School Management",
-      href: "/schools",
-      icon: "School",
+      name: "Class Management",
+      href: "/schools/teacher?tab=classes",
+      icon: "FolderKanban",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
     },
     {
-      name: "Waste Categories",
-      href: "/categories",
+      name: "Record Collection",
+      href: "/schools/teacher?tab=collect",
       icon: "Recycle",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
     },
     {
-      name: "Badge Management",
+      name: "Redemptions & Payouts",
+      href: "/schools/teacher?tab=payouts",
+      icon: "Banknote",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
+    },
+    {
+      name: "Collection History",
+      href: "/schools/teacher?tab=history",
+      icon: "History",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
+    },
+    {
+      name: "Badge View",
       href: "/badges",
       icon: "Award",
+      roles: ["TEACHER"],
+      group: "Badges & Reports",
     },
     {
       name: "Financial Reports",
       href: "/financial-reports",
       icon: "FileSpreadsheet",
+      roles: ["TEACHER"],
+      group: "Badges & Reports",
+    },
+
+    // Garbage Supervisor items
+    {
+      name: "School Management",
+      href: "/schools",
+      icon: "School",
+      roles: ["GARBAGE_SUPERVISOR"],
+      group: "Council Oversight",
+    },
+    {
+      name: "Waste Categories",
+      href: "/categories",
+      icon: "Recycle",
+      roles: ["GARBAGE_SUPERVISOR"],
+      group: "Council Oversight",
+    },
+    {
+      name: "Badge Management",
+      href: "/badges",
+      icon: "Award",
+      roles: ["GARBAGE_SUPERVISOR"],
+      group: "Council Oversight",
+    },
+    {
+      name: "Financial Reports",
+      href: "/financial-reports",
+      icon: "FileSpreadsheet",
+      roles: ["GARBAGE_SUPERVISOR"],
+      group: "Council Oversight",
     },
   ],
 };
 
 /**
- * 4. System Administration
+ * 4. System Administration (modular across all council divisions)
  */
 export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
   key: "admin",
@@ -178,26 +239,67 @@ export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
       name: "Overview",
       href: "/admin",
       icon: "LayoutDashboard",
+      group: "System & Access",
     },
     {
       name: "Staff Management",
       href: "/admin/staff",
       icon: "Users",
-    },
-    {
-      name: "Schools Registry",
-      href: "/admin/schools",
-      icon: "School",
+      group: "System & Access",
     },
     {
       name: "Audit & Monitoring",
       href: "/admin/audit-logs",
       icon: "ShieldCheck",
+      group: "System & Access",
     },
     {
       name: "Settings & Security",
       href: "/admin/settings",
       icon: "Settings",
+      group: "System & Access",
+    },
+    {
+      name: "Schools Registry",
+      href: "/schools",
+      icon: "School",
+      group: "School Waste Rewards",
+    },
+    {
+      name: "Waste Categories",
+      href: "/categories",
+      icon: "Recycle",
+      group: "School Waste Rewards",
+    },
+    {
+      name: "Badge Management",
+      href: "/badges",
+      icon: "Award",
+      group: "School Waste Rewards",
+    },
+    {
+      name: "Financial Reports",
+      href: "/financial-reports",
+      icon: "FileSpreadsheet",
+      group: "School Waste Rewards",
+    },
+    {
+      name: "Teacher Workspace",
+      href: "/schools/teacher",
+      icon: "FolderKanban",
+      group: "School Waste Rewards",
+    },
+    {
+      name: "Garbage Fee Management",
+      href: "/garbage-fees/dashboard",
+      icon: "Banknote",
+      group: "Other Divisions",
+    },
+    {
+      name: "Environmental Certificates",
+      href: "/environmental",
+      icon: "ShieldCheck",
+      group: "Other Divisions",
     },
   ],
 };
@@ -253,7 +355,11 @@ const SERVICE_ROUTES: Array<{ prefix: string; config: ServiceConfig }> = [
 /**
  * Dynamically resolves the active ServiceConfig based on the current Next.js pathname.
  */
-export function getServiceConfig(pathname: string | null | undefined): ServiceConfig {
+export function getServiceConfig(
+  pathname: string | null | undefined,
+  userRole?: UserRole | null
+): ServiceConfig {
+  if (userRole === "ADMIN") return ADMIN_SERVICE_CONFIG;
   if (!pathname) return DEFAULT_SERVICE_CONFIG;
 
   for (const { prefix, config } of SERVICE_ROUTES) {
