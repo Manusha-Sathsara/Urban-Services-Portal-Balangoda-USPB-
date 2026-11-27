@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Calendar,
   UserCheck,
+  Download,
 } from "lucide-react";
 
 // Currency formatter
@@ -38,6 +39,7 @@ export interface PayoutSummaryTableProps {
   onPageChange: (p: number) => void;
   onRefresh: () => void;
   onViewVoucher?: (voucher: DisbursementRecord) => void;
+  onExportCsv?: () => void;
 }
 
 export function PayoutSummaryTable({
@@ -51,6 +53,7 @@ export function PayoutSummaryTable({
   onPageChange,
   onRefresh,
   onViewVoucher,
+  onExportCsv,
 }: PayoutSummaryTableProps) {
   // Compute sum of shown disbursements
   const totalDisbursedSum = disbursements.reduce((acc, d) => acc + d.amount_lkr, 0);
@@ -105,6 +108,17 @@ export function PayoutSummaryTable({
               </button>
             )}
           </div>
+
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              title="Export Vouchers CSV"
+              className="inline-flex items-center justify-center rounded-lg border border-stone-200 bg-white p-2 text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition-colors cursor-pointer shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 text-stone-600" />
+            </button>
+          )}
 
           <button
             type="button"

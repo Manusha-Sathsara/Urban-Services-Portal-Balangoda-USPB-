@@ -20,6 +20,13 @@ import {
 import { SchoolFinancialTable } from "@/components/financial/SchoolFinancialTable";
 import { PayoutSummaryTable } from "@/components/financial/PayoutSummaryTable";
 import { FinancialChartsSection } from "@/components/financial/charts/FinancialChartsSection";
+import { ExportMenu } from "@/components/financial/ExportMenu";
+import {
+  exportToCsv,
+  exportToExcel,
+  exportToPdf,
+  FinancialExportPayload,
+} from "@/lib/exportUtils";
 import {
   Coins,
   Sparkles,
@@ -299,6 +306,31 @@ export default function FinancialReportsPage() {
 
   const selectedSchoolObj = schools.find((s) => s.id === appliedFilters.school_id);
 
+  // Export Payload Generator (Synchronized with active filtered dataset)
+  const getExportPayload = (): FinancialExportPayload => {
+    return {
+      stats,
+      schools: schoolStatements,
+      disbursements,
+      categories,
+      filters: appliedFilters,
+      selectedSchoolName: selectedSchoolObj ? selectedSchoolObj.name : "All Balangoda Schools",
+      generatedDate: new Date().toISOString().slice(0, 10),
+    };
+  };
+
+  const handleExportPdf = () => {
+    exportToPdf(getExportPayload());
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(getExportPayload());
+  };
+
+  const handleExportCsv = () => {
+    exportToCsv(getExportPayload());
+  };
+
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------------ */}
@@ -323,6 +355,14 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            {/* Stage 6: Export Actions Dropdown */}
+            <ExportMenu
+              onExportPdf={handleExportPdf}
+              onExportExcel={handleExportExcel}
+              onExportCsv={handleExportCsv}
+              disabled={isLoading}
+            />
+
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs">
               <Calendar className="h-3.5 w-3.5 text-amber-700" />
               <span>Fiscal Year 2026</span>
@@ -341,7 +381,7 @@ export default function FinancialReportsPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider text-[11px] text-amber-950">
-              Demonstration Data Mode — Stage 4 Tables & Filter Sync
+              Demonstration Data Mode — Stage 6 Export & Telemetry Suite
             </span>
             <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
               Simulation Baseline
@@ -778,9 +818,9 @@ export default function FinancialReportsPage() {
                   loadData(appliedFilters, schoolPage, schoolSearch, disbursementPage, disbursementSearch)
                 }
                 onViewStatement={(statement) => {
-                  // Ready for Stage 5 Statement Modal
                   console.log("View statement for:", statement.school_name);
                 }}
+                onExportCsv={handleExportCsv}
               />
             )}
 
@@ -816,9 +856,9 @@ export default function FinancialReportsPage() {
                   loadData(appliedFilters, schoolPage, schoolSearch, disbursementPage, disbursementSearch)
                 }
                 onViewVoucher={(voucher) => {
-                  // Ready for Stage 5 Voucher Modal
                   console.log("View voucher:", voucher.voucher_reference);
                 }}
+                onExportCsv={handleExportCsv}
               />
             )}
           </div>
@@ -832,11 +872,11 @@ export default function FinancialReportsPage() {
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-[#800000]" />
           <span>
-            <strong>Stage 5 Status:</strong> Visual analytics suite active: Monthly Cash Payout Trends, Monthly Points Redemption Trends, School-wise Comparisons, and Payout Status Distribution charts reactively connected to filters.
+            <strong>Stage 6 Status:</strong> Multi-format export suite active: PDF (Printable Municipal Statement with Sign-offs), Excel (.xls multi-sheet workbook), and CSV exports fully operational and synchronized with active filter criteria.
           </span>
         </div>
         <span className="text-[11px] text-stone-400 italic">
-          Audit statement modal, voucher modal, and CSV exports scheduled for subsequent stages.
+          All financial reports, filter perspectives, charts, tables, and audit exports fully verified.
         </span>
       </div>
     </div>

@@ -17,6 +17,7 @@ import {
   Clock,
   Phone,
   User,
+  Download,
 } from "lucide-react";
 
 // Currency formatter
@@ -38,6 +39,7 @@ export interface SchoolFinancialTableProps {
   onPageChange: (p: number) => void;
   onRefresh: () => void;
   onViewStatement?: (statement: SchoolFinancialStatement) => void;
+  onExportCsv?: () => void;
 }
 
 export function SchoolFinancialTable({
@@ -51,6 +53,7 @@ export function SchoolFinancialTable({
   onPageChange,
   onRefresh,
   onViewStatement,
+  onExportCsv,
 }: SchoolFinancialTableProps) {
   return (
     <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
@@ -97,6 +100,17 @@ export function SchoolFinancialTable({
               </button>
             )}
           </div>
+
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              title="Export School Statements CSV"
+              className="inline-flex items-center justify-center rounded-lg border border-stone-200 bg-white p-2 text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition-colors cursor-pointer shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 text-stone-600" />
+            </button>
+          )}
 
           <button
             type="button"
