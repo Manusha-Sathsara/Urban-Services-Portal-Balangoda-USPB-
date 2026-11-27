@@ -60,7 +60,7 @@ function isItemActive(pathname: string, searchTab: string | null, href: string):
     const [path, query] = href.split("?");
     const targetTab = new URLSearchParams(query).get("tab");
     if (pathname === path) {
-      return (searchTab || "students") === targetTab;
+      return (searchTab || "collect") === targetTab;
     }
     return false;
   }
@@ -109,7 +109,7 @@ function SidebarNavContent() {
       </div>
 
       <aside
-        className={`w-64 shrink-0 border-r border-[#f0e6e5] bg-white p-4 flex-col justify-between ${
+        className={`w-64 shrink-0 border-r border-[#f0e6e5] bg-white p-4 flex-col justify-between md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:overflow-y-auto ${
           isMobileOpen ? "flex" : "hidden md:flex"
         }`}
       >

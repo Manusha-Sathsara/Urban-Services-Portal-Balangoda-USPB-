@@ -141,21 +141,7 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
   defaultUserName: "Eco-Rewards Coordinator",
   navSectionLabel: "School Programme",
   navItems: [
-    // Teacher workspace items
-    {
-      name: "Student Management",
-      href: "/schools/teacher?tab=students",
-      icon: "Users",
-      roles: ["TEACHER"],
-      group: "Classroom & Rewards",
-    },
-    {
-      name: "Class Management",
-      href: "/schools/teacher?tab=classes",
-      icon: "FolderKanban",
-      roles: ["TEACHER"],
-      group: "Classroom & Rewards",
-    },
+    // Teacher workspace items (Record Collection first as primary duty)
     {
       name: "Record Collection",
       href: "/schools/teacher?tab=collect",
@@ -174,6 +160,20 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
       name: "Collection History",
       href: "/schools/teacher?tab=history",
       icon: "History",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
+    },
+    {
+      name: "Student Management",
+      href: "/schools/teacher?tab=students",
+      icon: "Users",
+      roles: ["TEACHER"],
+      group: "Classroom & Rewards",
+    },
+    {
+      name: "Class Management",
+      href: "/schools/teacher?tab=classes",
+      icon: "FolderKanban",
       roles: ["TEACHER"],
       group: "Classroom & Rewards",
     },
@@ -290,16 +290,34 @@ export const ADMIN_SERVICE_CONFIG: ServiceConfig = {
       group: "School Waste Rewards",
     },
     {
-      name: "Garbage Fee Management",
+      name: "Dashboard",
       href: "/garbage-fees/dashboard",
-      icon: "Banknote",
-      group: "Other Divisions",
+      icon: "LayoutDashboard",
+      group: "Garbage Fee Management",
     },
     {
-      name: "Environmental Certificates",
+      name: "Business List",
+      href: "/garbage-fees/business",
+      icon: "FolderKanban",
+      group: "Garbage Fee Management",
+    },
+    {
+      name: "Payment Management",
+      href: "/garbage-fees/payment",
+      icon: "Banknote",
+      group: "Garbage Fee Management",
+    },
+    {
+      name: "Annual Records",
+      href: "/garbage-fees/annual",
+      icon: "FileSpreadsheet",
+      group: "Garbage Fee Management",
+    },
+    {
+      name: "Clearances & Certifications",
       href: "/environmental",
       icon: "ShieldCheck",
-      group: "Other Divisions",
+      group: "Environmental Certificates",
     },
   ],
 };

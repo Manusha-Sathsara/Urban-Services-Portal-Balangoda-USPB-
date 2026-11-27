@@ -15,6 +15,9 @@ import {
 } from "@/types";
 import badgeService from "@/services/badgeService";
 import schoolService from "@/services/schoolService";
+import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { ApiResponse } from "@/types";
 import { StatCard } from "@/components/shared/StatCard";
 import BadgeTable from "@/components/badges/BadgeTable";
 import BadgeFormModal from "@/components/badges/BadgeFormModal";
@@ -44,7 +47,139 @@ import {
 
 type ActiveTab = "catalog" | "eligibility" | "awards";
 
+interface TeacherStudentBadge {
+  student_id: number;
+  membership_no: string;
+  full_name: string;
+  grade: string;
+  class_name: string;
+  lifetime_earned_points: number;
+  available_points: number;
+  awarded_badges: string[];
+}
+
+function TeacherBadgeView() {
+  const [rows, setRows] = useState<TeacherStudentBadge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get<ApiResponse<TeacherStudentBadge[]>>("/school-rewards/student-badges")
+      .then((res) => {
+        if (active) setRows(res.data.data || []);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = rows.filter((r) => {
+    const q = search.toLowerCase();
+    return (
+      r.full_name.toLowerCase().includes(q) ||
+      r.membership_no.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-serif text-[22px] text-[#5a0000] leading-tight">
+            Student Badges
+          </h2>
+          <p className="text-[13px] text-[#8a5a58] mt-1">
+            Badges are awarded automatically as students reach council milestones.
+          </p>
+        </div>
+        <input
+          type="search"
+          placeholder="Search student or membership no"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:w-64 rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-xs focus:border-[#800000] focus:outline-none"
+        />
+      </div>
+
+      <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[#faf4f3] text-[#5a0000]">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Membership</th>
+              <th className="px-4 py-3 font-semibold">Student</th>
+              <th className="px-4 py-3 font-semibold">Class</th>
+              <th className="px-4 py-3 font-semibold text-right">Lifetime Pts</th>
+              <th className="px-4 py-3 font-semibold">Awarded Badges</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0e6e5]">
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-[#8a5a58]">
+                  Loading student badges...
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-[#8a5a58]">
+                  No students found.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((r) => (
+                <tr key={r.student_id} className="hover:bg-[#fcf8f7]">
+                  <td className="px-4 py-3 font-mono text-[#5a413d]">{r.membership_no}</td>
+                  <td className="px-4 py-3 font-medium text-[#1b1c1c]">{r.full_name}</td>
+                  <td className="px-4 py-3 text-[#5a413d]">
+                    {[r.grade, r.class_name].filter(Boolean).join(" · ") || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-[#5a0000]">
+                    {r.lifetime_earned_points.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {r.awarded_badges.length === 0 ? (
+                      <span className="text-[#8a5a58]">No badges yet</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {r.awarded_badges.map((b) => (
+                          <span
+                            key={b}
+                            className="inline-flex items-center gap-1 rounded-full border border-[#fbbf24]/50 bg-[#fff8e1] px-2.5 py-0.5 text-[11px] font-medium text-[#5a3a00]"
+                          >
+                            <Award className="h-3 w-3" strokeWidth={1.5} />
+                            {b}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function BadgeManagementPage() {
+  const { user } = useAuth();
+  if (!user) {
+    return null;
+  }
+  if (user.role === "TEACHER") {
+    return <TeacherBadgeView />;
+  }
+  return <SupervisorBadgeManagement />;
+}
+
+function SupervisorBadgeManagement() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("catalog");
 
   // Global KPI Statistics

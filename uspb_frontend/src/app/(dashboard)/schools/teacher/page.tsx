@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { Banknote, CheckCircle2, FolderKanban, Plus, Recycle, RotateCcw, Trash2, Users } from "lucide-react";
+import { CheckCircle2, Plus, Recycle, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ApiResponse } from "@/types";
@@ -80,6 +80,17 @@ interface DashboardSummary {
   total_collections: number;
 }
 
+interface SchoolClass {
+  id: number;
+  school_id: number;
+  grade: string;
+  class_name: string;
+  teacher_in_charge: string;
+  is_active: boolean;
+  student_count: number;
+  total_points: number;
+}
+
 type TabKey = "students" | "classes" | "collect" | "payouts" | "history";
 
 function TeacherWorkspaceContent() {
@@ -90,18 +101,25 @@ function TeacherWorkspaceContent() {
   const tab: TabKey =
     urlTab && ["students", "classes", "collect", "payouts", "history"].includes(urlTab)
       ? urlTab
-      : "students";
+      : "collect";
   const setTab = (next: TabKey) => {
     router.replace(`/schools/teacher?tab=${next}`);
   };
   const [classFilter, setClassFilter] = useState<string>("");
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [students, setStudents] = useState<SchoolStudent[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [categories, setCategories] = useState<ActiveCategory[]>([]);
   const [collections, setCollections] = useState<WasteCollection[]>([]);
   const [payouts, setPayouts] = useState<RewardPayout[]>([]);
   const [search, setSearch] = useState("");
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Class management form
+  const [showClassForm, setShowClassForm] = useState(false);
+  const [newClassGrade, setNewClassGrade] = useState("");
+  const [newClassName, setNewClassName] = useState("");
+  const [newClassTeacher, setNewClassTeacher] = useState("");
 
   // Student registration form
   const [showStudentForm, setShowStudentForm] = useState(false);
@@ -122,20 +140,23 @@ function TeacherWorkspaceContent() {
 
   // Payout modal/inline form
   const [payoutStudent, setPayoutStudent] = useState<SchoolStudent | null>(null);
+  const [payoutStudentId, setPayoutStudentId] = useState("");
   const [cardRef, setCardRef] = useState("");
   const [receiptNo, setReceiptNo] = useState("");
 
   const loadAll = useCallback(async () => {
     try {
-      const [sumRes, stRes, catRes, colRes, payRes] = await Promise.all([
+      const [sumRes, stRes, clsRes, catRes, colRes, payRes] = await Promise.all([
         api.get<ApiResponse<DashboardSummary>>("/school-rewards/dashboard"),
         api.get<ApiResponse<SchoolStudent[]>>("/school-rewards/students"),
+        api.get<ApiResponse<SchoolClass[]>>("/school-rewards/classes"),
         api.get<ApiResponse<ActiveCategory[]>>("/categories/active"),
         api.get<ApiResponse<WasteCollection[]>>("/school-rewards/collections"),
         api.get<ApiResponse<RewardPayout[]>>("/school-rewards/payouts"),
       ]);
       setSummary(sumRes.data.data || null);
       setStudents(stRes.data.data || []);
+      setClasses(clsRes.data.data || []);
       const activeCats = catRes.data.data || [];
       setCategories(activeCats);
       if (activeCats.length > 0 && colItems.length === 0) {
@@ -161,15 +182,17 @@ function TeacherWorkspaceContent() {
     Promise.all([
       api.get<ApiResponse<DashboardSummary>>("/school-rewards/dashboard"),
       api.get<ApiResponse<SchoolStudent[]>>("/school-rewards/students"),
+      api.get<ApiResponse<SchoolClass[]>>("/school-rewards/classes"),
       api.get<ApiResponse<ActiveCategory[]>>("/categories/active"),
       api.get<ApiResponse<WasteCollection[]>>("/school-rewards/collections"),
       api.get<ApiResponse<RewardPayout[]>>("/school-rewards/payouts"),
     ])
-      .then(([sumRes, stRes, catRes, colRes, payRes]) => {
+      .then(([sumRes, stRes, clsRes, catRes, colRes, payRes]) => {
         if (!active) return;
         setColDate(new Date().toISOString().slice(0, 10));
         setSummary(sumRes.data.data || null);
         setStudents(stRes.data.data || []);
+        setClasses(clsRes.data.data || []);
         const activeCats = catRes.data.data || [];
         setCategories(activeCats);
         if (activeCats.length > 0) {
@@ -309,14 +332,54 @@ function TeacherWorkspaceContent() {
     }
   };
 
+  const handleCreateClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+    try {
+      await api.post("/school-rewards/classes", {
+        grade: newClassGrade.trim(),
+        class_name: newClassName.trim(),
+        teacher_in_charge: newClassTeacher.trim(),
+      });
+      setFeedback({
+        type: "ok",
+        text: `Added class ${newClassGrade.trim()} ${newClassName.trim()}.`,
+      });
+      setShowClassForm(false);
+      setNewClassGrade("");
+      setNewClassName("");
+      setNewClassTeacher("");
+      await loadAll();
+    } catch (err) {
+      const msg = axios.isAxiosError<ApiResponse>(err) ? err.response?.data?.error : undefined;
+      setFeedback({ type: "err", text: msg || "Could not create class." });
+    }
+  };
+
+  const handleToggleClassActive = async (cls: SchoolClass) => {
+    setFeedback(null);
+    try {
+      await api.patch(`/school-rewards/classes/${cls.id}`, { is_active: !cls.is_active });
+      setFeedback({
+        type: "ok",
+        text: `Class ${cls.grade} ${cls.class_name} marked ${cls.is_active ? "inactive" : "active"}.`,
+      });
+      await loadAll();
+    } catch {
+      setFeedback({ type: "err", text: "Failed to update class status." });
+    }
+  };
+
   const handleRecordPayout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payoutStudent) return;
+    const targetStudent =
+      payoutStudent || students.find((s) => s.id === Number(payoutStudentId)) || null;
+    if (!targetStudent) return;
     setFeedback(null);
-    const idempotencyKey = `pay-${payoutStudent.id}-${crypto.randomUUID()}`;
+    const idempotencyKey = `pay-${targetStudent.id}-${crypto.randomUUID()}`;
     try {
       const res = await api.post<ApiResponse<{ remaining_points: number }>>("/school-rewards/payouts", {
-        student_id: payoutStudent.id,
+        student_id: targetStudent.id,
         physical_card_ref: cardRef.trim(),
         receipt_no: receiptNo.trim(),
         idempotency_key: idempotencyKey,
@@ -324,9 +387,10 @@ function TeacherWorkspaceContent() {
       const rem = res.data.data?.remaining_points ?? 0;
       setFeedback({
         type: "ok",
-        text: `Recorded Rs. 1,000.00 payout for ${payoutStudent.full_name}. Remaining balance: ${rem.toFixed(2)} pts.`,
+        text: `Recorded Rs. 1,000.00 payout for ${targetStudent.full_name}. Remaining balance: ${rem.toFixed(2)} pts.`,
       });
       setPayoutStudent(null);
+      setPayoutStudentId("");
       setCardRef("");
       setReceiptNo("");
       await loadAll();
@@ -359,31 +423,6 @@ function TeacherWorkspaceContent() {
     const matchesClass = !classFilter || classKey === classFilter;
     return matchesSearch && matchesClass;
   });
-
-  const classGroups = Object.values(
-    students.reduce<
-      Record<
-        string,
-        { key: string; grade: string; className: string; count: number; active: number; totalPts: number }
-      >
-    >((acc, s) => {
-      const key = [s.grade, s.class_name].filter(Boolean).join(" · ") || "Unassigned";
-      if (!acc[key]) {
-        acc[key] = {
-          key,
-          grade: s.grade || "—",
-          className: s.class_name || "—",
-          count: 0,
-          active: 0,
-          totalPts: 0,
-        };
-      }
-      acc[key].count += 1;
-      if (s.is_active) acc[key].active += 1;
-      acc[key].totalPts += s.available_points;
-      return acc;
-    }, {})
-  );
 
   return (
     <div className="space-y-6">
@@ -461,37 +500,6 @@ function TeacherWorkspaceContent() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-[#f0e6e5] pb-2">
-        {(
-          [
-            { key: "students", label: "Students & balances", icon: Users },
-            { key: "classes", label: "Class management", icon: FolderKanban },
-            { key: "collect", label: "Record collection", icon: Recycle },
-            { key: "payouts", label: "Redemptions & payouts", icon: Banknote },
-            { key: "history", label: "Collection history", icon: RotateCcw },
-          ] as const
-        ).map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
-                active
-                  ? "bg-[#800000] text-white"
-                  : "bg-white text-[#5a0000] border border-[#f0e6e5] hover:bg-[#f0e0df]"
-              }`}
-            >
-              <Icon className="h-4 w-4" strokeWidth={1.5} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
       {/* TAB 1: STUDENTS */}
       {tab === "students" && (
         <div className="space-y-4">
@@ -565,6 +573,34 @@ function TeacherWorkspaceContent() {
                     className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
                   />
                 </div>
+                {classes.filter((c) => c.is_active).length > 0 && (
+                  <div className="sm:col-span-2 lg:col-span-4">
+                    <label className="block text-xs font-medium text-[#5a0000]">
+                      Assign from Registered Classes
+                    </label>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const cls = classes.find((c) => c.id === Number(e.target.value));
+                        if (cls) {
+                          setGrade(cls.grade);
+                          setClassName(cls.class_name);
+                        }
+                      }}
+                      className="mt-1 w-full sm:w-80 rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="">Choose a registered class (or type below)...</option>
+                      {classes
+                        .filter((c) => c.is_active)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.grade} — {c.class_name}
+                            {c.teacher_in_charge ? ` (${c.teacher_in_charge})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-[#5a0000]">Grade</label>
                   <input
@@ -768,52 +804,148 @@ function TeacherWorkspaceContent() {
 
       {/* TAB 2: CLASS MANAGEMENT */}
       {tab === "classes" && (
-        <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#faf4f3] text-[#5a0000]">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Grade</th>
-                <th className="px-4 py-3 font-semibold">Class</th>
-                <th className="px-4 py-3 font-semibold text-right">Students</th>
-                <th className="px-4 py-3 font-semibold text-right">Active</th>
-                <th className="px-4 py-3 font-semibold text-right">Available Points</th>
-                <th className="px-4 py-3 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0e6e5]">
-              {classGroups.length === 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-serif text-base font-semibold text-[#5a0000]">
+              School Classes
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowClassForm((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#800000] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Add Class
+            </button>
+          </div>
+
+          {showClassForm && (
+            <form
+              onSubmit={handleCreateClass}
+              className="rounded-xl border border-[#dcc6c4] bg-white p-5 space-y-4"
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#5a0000]">Grade</label>
+                  <input
+                    type="text"
+                    required
+                    value={newClassGrade}
+                    onChange={(e) => setNewClassGrade(e.target.value)}
+                    placeholder="Grade 10"
+                    className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5a0000]">Class Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newClassName}
+                    onChange={(e) => setNewClassName(e.target.value)}
+                    placeholder="10-A"
+                    className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5a0000]">
+                    Teacher in Charge
+                  </label>
+                  <input
+                    type="text"
+                    value={newClassTeacher}
+                    onChange={(e) => setNewClassTeacher(e.target.value)}
+                    placeholder="Optional"
+                    className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowClassForm(false)}
+                  className="rounded-lg border border-[#dcc6c4] px-4 py-2 text-xs font-semibold text-[#5a0000]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000]"
+                >
+                  Save Class
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#faf4f3] text-[#5a0000]">
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[#8a5a58]">
-                    No classes found. Register students to populate classes.
-                  </td>
+                  <th className="px-4 py-3 font-semibold">Grade</th>
+                  <th className="px-4 py-3 font-semibold">Class</th>
+                  <th className="px-4 py-3 font-semibold">Teacher in Charge</th>
+                  <th className="px-4 py-3 font-semibold text-right">Students</th>
+                  <th className="px-4 py-3 font-semibold text-right">Available Points</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold text-right">Action</th>
                 </tr>
-              ) : (
-                classGroups.map((cg) => (
-                  <tr key={cg.key} className="hover:bg-[#fcf8f7]">
-                    <td className="px-4 py-3 font-medium text-[#1b1c1c]">{cg.grade}</td>
-                    <td className="px-4 py-3 text-[#5a413d]">{cg.className}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{cg.count}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{cg.active}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[#5a0000]">
-                      {cg.totalPts.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setClassFilter(cg.key);
-                          setTab("students");
-                        }}
-                        className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
-                      >
-                        View Students
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-[#f0e6e5]">
+                {classes.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-[#8a5a58]">
+                      No classes added yet. Click Add Class to create one.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  classes.map((cls) => (
+                    <tr key={cls.id} className="hover:bg-[#fcf8f7]">
+                      <td className="px-4 py-3 font-medium text-[#1b1c1c]">{cls.grade}</td>
+                      <td className="px-4 py-3 text-[#5a413d]">{cls.class_name}</td>
+                      <td className="px-4 py-3 text-[#5a413d]">{cls.teacher_in_charge || "—"}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">
+                        {cls.student_count}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[#5a0000]">
+                        {cls.total_points.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-medium ${
+                            cls.is_active
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-stone-100 text-stone-600"
+                          }`}
+                        >
+                          {cls.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleClassActive(cls)}
+                          className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+                        >
+                          {cls.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClassFilter(`${cls.grade} · ${cls.class_name}`);
+                            setTab("students");
+                          }}
+                          className="rounded border border-[#dcc6c4] px-2.5 py-1 text-[11px] font-semibold text-[#5a0000] hover:bg-[#f0e0df]"
+                        >
+                          View Students
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -953,8 +1085,76 @@ function TeacherWorkspaceContent() {
 
       {/* TAB 3: PAYOUTS */}
       {tab === "payouts" && (
-        <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="space-y-4">
+          <form
+            onSubmit={handleRecordPayout}
+            className="rounded-xl border border-[#f0e6e5] bg-white p-5 space-y-4"
+          >
+            <h3 className="font-serif text-base font-semibold text-[#5a0000]">
+              Record Individual Student Payout (Rs. 1,000 / 1,000 pts)
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="block text-xs font-medium text-[#5a0000]">
+                  Eligible Student (1,000+ pts)
+                </label>
+                <select
+                  required
+                  value={payoutStudentId}
+                  onChange={(e) => {
+                    setPayoutStudent(null);
+                    setPayoutStudentId(e.target.value);
+                  }}
+                  className="mt-1 w-full rounded-lg border border-[#dcc6c4] bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select eligible student...</option>
+                  {students
+                    .filter((s) => s.is_active && s.available_points >= 1000)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.full_name} ({s.membership_no}) — {s.available_points.toFixed(2)} pts
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#5a0000]">
+                  Physical Card Reference
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cardRef}
+                  onChange={(e) => setCardRef(e.target.value)}
+                  placeholder="CARD-2026-001"
+                  className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#5a0000]">Receipt No</label>
+                <input
+                  type="text"
+                  required
+                  value={receiptNo}
+                  onChange={(e) => setReceiptNo(e.target.value)}
+                  placeholder="RCPT-001"
+                  className="mt-1 w-full rounded-lg border border-[#dcc6c4] px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={!payoutStudentId}
+                className="rounded-lg bg-[#800000] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0000] disabled:opacity-50"
+              >
+                Record Rs. 1,000 Payout
+              </button>
+            </div>
+          </form>
+
+          <div className="rounded-xl border border-[#f0e6e5] bg-white overflow-x-auto">
+            <table className="w-full text-left text-xs">
             <thead className="bg-[#faf4f3] text-[#5a0000]">
               <tr>
                 <th className="px-4 py-3 font-semibold">Date</th>
@@ -1004,6 +1204,7 @@ function TeacherWorkspaceContent() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
