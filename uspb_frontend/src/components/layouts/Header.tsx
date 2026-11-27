@@ -1,46 +1,55 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { getServiceConfig } from "@/lib/serviceConfig";
 
-interface HeaderProps {
-  userRole?: string;
-  userName?: string;
+export interface HeaderProps {
+  serviceName?: string;
 }
 
-export function Header({
-  userName = "Municipal Officer",
-  userRole = "Admin",
-}: HeaderProps) {
-  return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white/95 px-6 backdrop-blur transition-all dark:border-gray-800 dark:bg-gray-900/95">
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 font-bold text-white shadow-sm">
-          U
-        </div>
-        <div>
-          <h1 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-            Urban Services Portal
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Balangoda Urban Council
-          </p>
-        </div>
-      </div>
+export function Header({ serviceName: customServiceName }: HeaderProps) {
+  const pathname = usePathname();
+  const config = getServiceConfig(pathname);
+  const activeServiceName = customServiceName || config.serviceName;
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-800 dark:bg-gray-800/60">
-          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            {userName} ({userRole})
-          </span>
-        </div>
+  return (
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#f0e6e5] bg-white px-4 md:px-6 shadow-2xs backdrop-blur transition-all">
+      <div className="flex items-center gap-3">
         <Link
-          href="/login"
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition"
+          href="/"
+          className="group flex items-center gap-3 focus:outline-none"
+          title="Back to USPB Public Portal"
+          aria-label="Balangoda Urban Services Portal Home"
         >
-          Sign Out
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#f0e0df] border border-[#dcc6c4] p-1 shadow-xs group-hover:scale-105 transition-transform">
+            <Image
+              src="/images/gov_logo.png"
+              alt="Balangoda Urban Council Crest"
+              width={34}
+              height={34}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <div>
+            <h1 className="font-serif text-[14px] md:text-[15px] font-bold tracking-tight text-[#5a0000] leading-tight">
+              {activeServiceName}
+            </h1>
+            <p className="text-[11px] md:text-[11.5px] text-[#8a5a58]">
+              {config.serviceSubtitle}
+            </p>
+          </div>
         </Link>
       </div>
+
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 rounded-md border border-[#f0e6e5] bg-[#faf4f3] px-3 py-1.5 text-xs font-medium text-[#5a0000] hover:bg-[#f0e0df] transition-colors"
+      >
+        <span aria-hidden="true">&larr;</span> Public Portal
+      </Link>
     </header>
   );
 }

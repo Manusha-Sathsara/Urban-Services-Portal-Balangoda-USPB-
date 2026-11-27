@@ -1,16 +1,27 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
 
-// ConnectPostgres initializes a connection pool to PostgreSQL using sqlx and pgx
+// RLSContext defines transaction-local PostgreSQL session settings used by RLS policies.
+type RLSContext struct {
+	UserID   int
+	Role     string
+	SchoolID *int
+	AuthFlow bool
+}
+
+// ConnectPostgres initializes a connection pool to PostgreSQL using sqlx and pgx.
 func ConnectPostgres() (*sqlx.DB, error) {
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
@@ -26,16 +37,22 @@ func ConnectPostgres() (*sqlx.DB, error) {
 		port = "5432"
 	}
 	if user == "" {
-		user = "postgres"
+		user = "uspb_app"
 	}
 	if dbname == "" {
-		dbname = "uspb_db"
+		dbname = "uspb_auth_db"
 	}
 	if sslmode == "" {
 		sslmode = "disable"
 	}
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
+	dsn := (&url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, password),
+		Host:     fmt.Sprintf("%s:%s", host, port),
+		Path:     "/" + dbname,
+		RawQuery: "sslmode=" + url.QueryEscape(sslmode),
+	}).String()
 
 	db, err := sqlx.Connect("pgx", dsn)
 	if err != nil {
@@ -53,4 +70,52 @@ func ConnectPostgres() (*sqlx.DB, error) {
 	}
 
 	return db, nil
+}
+
+// WithRLS executes fn inside a transaction with transaction-local PostgreSQL RLS settings.
+func WithRLS(ctx context.Context, db *sqlx.DB, rls RLSContext, fn func(tx *sqlx.Tx) error) error {
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin rls tx: %w", err)
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		}
+	}()
+
+	userIDStr := ""
+	if rls.UserID > 0 {
+		userIDStr = strconv.Itoa(rls.UserID)
+	}
+	schoolIDStr := ""
+	if rls.SchoolID != nil && *rls.SchoolID > 0 {
+		schoolIDStr = strconv.Itoa(*rls.SchoolID)
+	}
+	authFlowStr := "false"
+	if rls.AuthFlow {
+		authFlowStr = "true"
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`SELECT set_config('app.current_user_id', $1, true),
+		        set_config('app.current_role', $2, true),
+		        set_config('app.current_school_id', $3, true),
+		        set_config('app.auth_flow', $4, true)`,
+		userIDStr, rls.Role, schoolIDStr, authFlowStr,
+	); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("apply rls context: %w", err)
+	}
+
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit rls tx: %w", err)
+	}
+	return nil
 }
