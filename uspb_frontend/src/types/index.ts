@@ -306,4 +306,109 @@ export interface AwardListResult {
   total_pages: number;
 }
 
+// ==========================================
+// FINANCIAL REPORTS MODULE TYPES
+// ==========================================
+
+export interface FinancialStats {
+  total_recycled_value_lkr: number;
+  total_points_liability: number;
+  total_disbursed_lkr: number;
+  outstanding_balance_lkr: number;
+  total_collected_kg: number;
+  landfill_savings_lkr: number;
+  settled_schools_count: number;
+  total_participating_schools: number;
+}
+
+export type SettlementStatus = "settled" | "partial" | "pending";
+
+export interface SchoolFinancialStatement {
+  school_id: number;
+  school_code: string;
+  school_name: string;
+  contact_number: string;
+  principal_name: string;
+  total_collections_kg: number;
+  total_points_earned: number;
+  total_value_lkr: number;
+  total_disbursed_lkr: number;
+  pending_balance_lkr: number;
+  settlement_status: SettlementStatus;
+  last_collection_date?: string | null;
+  last_disbursement_date?: string | null;
+}
+
+export interface CategoryValuation {
+  category_id: number;
+  category_name: string;
+  measurement_unit: string;
+  current_rate: number;
+  total_weight_kg: number;
+  total_value_lkr: number;
+  volume_share_percentage: number;
+  value_share_percentage: number;
+}
+
+export type PaymentMethod = "bank_transfer" | "cheque" | "eco_grant" | "cash_voucher";
+export type DisbursementStatus = "pending" | "approved" | "disbursed" | "rejected";
+
+export interface DisbursementRecord {
+  id: number;
+  voucher_reference: string;
+  school_id: number;
+  school_name: string;
+  school_code: string;
+  points_redeemed: number;
+  amount_lkr: number;
+  payment_method: PaymentMethod;
+  disbursement_date: string;
+  status: DisbursementStatus;
+  authorized_by: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDisbursementDto {
+  school_id: number;
+  points_to_redeem: number;
+  amount_lkr: number;
+  payment_method: PaymentMethod;
+  disbursement_date?: string;
+  notes?: string;
+}
+
+export interface FinancialFilterParams {
+  school_id?: number;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface SchoolFinancialListResult {
+  records: SchoolFinancialStatement[];
+  total_count: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface DisbursementListResult {
+  disbursements: DisbursementRecord[];
+  total_count: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface CategoryValuationListResult {
+  categories: CategoryValuation[];
+  total_weight_kg: number;
+  total_value_lkr: number;
+}
+
 

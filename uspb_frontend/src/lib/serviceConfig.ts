@@ -158,9 +158,8 @@ export const SCHOOLS_SERVICE_CONFIG: ServiceConfig = {
     },
     {
       name: "Financial Reports",
-      href: "#",
+      href: "/financial-reports",
       icon: "BarChart3",
-      badge: "Soon",
     },
   ],
 };
@@ -243,6 +242,7 @@ const SERVICE_ROUTES: Array<{ prefix: string; config: ServiceConfig }> = [
   { prefix: "/schools", config: SCHOOLS_SERVICE_CONFIG },
   { prefix: "/categories", config: SCHOOLS_SERVICE_CONFIG },
   { prefix: "/badges", config: SCHOOLS_SERVICE_CONFIG },
+  { prefix: "/financial-reports", config: SCHOOLS_SERVICE_CONFIG },
   { prefix: "/admin", config: ADMIN_SERVICE_CONFIG },
 ];
 
