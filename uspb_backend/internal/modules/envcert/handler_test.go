@@ -169,3 +169,103 @@ func TestHandler_GetByID(t *testing.T) {
 		}
 	})
 }
+
+func TestHandler_Create(t *testing.T) {
+	t.Run("returns 201 Created for valid intake payload", func(t *testing.T) {
+		svc := &mockService{}
+		app := setupTestApp(svc)
+
+		payload := `{
+			"business_name": "Balangoda Spice Mills",
+			"owner_name": "N. K. Jayasinghe",
+			"owner_nic": "198823456789",
+			"contact_phone": "0775551234",
+			"address": "No. 42, Ratnapura Road, Balangoda",
+			"business_category": "Manufacturing & Processing"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusCreated {
+			t.Errorf("expected status 201, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "PENDING") {
+			t.Errorf("expected response body to contain default status 'PENDING', got %s", string(body))
+		}
+	})
+
+	t.Run("returns 400 Bad Request for malformed JSON", func(t *testing.T) {
+		svc := &mockService{}
+		app := setupTestApp(svc)
+
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs", strings.NewReader(`{"business_name":`))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "Invalid request payload") {
+			t.Errorf("expected 'Invalid request payload' message, got %s", string(body))
+		}
+	})
+
+	t.Run("returns 400 Bad Request when required fields are missing", func(t *testing.T) {
+		svc := &mockService{}
+		app := setupTestApp(svc)
+
+		payload := `{"business_name": "Incomplete Shop"}`
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "are required") {
+			t.Errorf("expected validation error message, got %s", string(body))
+		}
+	})
+
+	t.Run("returns 500 Internal Server Error when service fails", func(t *testing.T) {
+		svc := &mockService{createErr: errors.New("insert failed")}
+		app := setupTestApp(svc)
+
+		payload := `{
+			"business_name": "Balangoda Spice Mills",
+			"owner_name": "N. K. Jayasinghe",
+			"owner_nic": "198823456789",
+			"contact_phone": "0775551234",
+			"address": "No. 42, Ratnapura Road, Balangoda",
+			"business_category": "Manufacturing & Processing"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/environmental-certs", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("failed to execute request: %v", err)
+		}
+		if resp.StatusCode != fiber.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", resp.StatusCode)
+		}
+	})
+}
