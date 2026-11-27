@@ -224,8 +224,10 @@ export const financialService = {
     try {
       const query = new URLSearchParams();
       if (params.school_id) query.append("school_id", params.school_id.toString());
+      if (params.status && params.status !== "all") query.append("status", params.status);
       if (params.start_date) query.append("start_date", params.start_date);
       if (params.end_date) query.append("end_date", params.end_date);
+      if (params.report_type) query.append("report_type", params.report_type);
 
       const response = await api.get<ApiResponse<FinancialStats>>(
         `/financial-reports/stats?${query.toString()}`
@@ -234,9 +236,50 @@ export const financialService = {
         return response.data.data;
       }
     } catch {
-      // Fallback for development & Stage 1 preview
+      // Fallback for development & Stage 1-3 preview
     }
-    return BASELINE_FINANCIAL_STATS;
+
+    let filteredSchools = [...BASELINE_SCHOOL_STATEMENTS];
+
+    if (params.school_id) {
+      filteredSchools = filteredSchools.filter((s) => s.school_id === Number(params.school_id));
+    }
+
+    if (params.status && params.status !== "all") {
+      filteredSchools = filteredSchools.filter((s) => s.settlement_status === params.status);
+    }
+
+    if (params.start_date) {
+      filteredSchools = filteredSchools.filter(
+        (s) => !s.last_collection_date || s.last_collection_date >= params.start_date!
+      );
+    }
+
+    if (params.end_date) {
+      filteredSchools = filteredSchools.filter(
+        (s) => !s.last_collection_date || s.last_collection_date <= params.end_date!
+      );
+    }
+
+    const total_recycled_value_lkr = filteredSchools.reduce((acc, s) => acc + s.total_value_lkr, 0);
+    const total_points_liability = filteredSchools.reduce((acc, s) => acc + s.total_points_earned, 0);
+    const total_disbursed_lkr = filteredSchools.reduce((acc, s) => acc + s.total_disbursed_lkr, 0);
+    const outstanding_balance_lkr = filteredSchools.reduce((acc, s) => acc + s.pending_balance_lkr, 0);
+    const total_collected_kg = filteredSchools.reduce((acc, s) => acc + s.total_collections_kg, 0);
+    const landfill_savings_lkr = total_collected_kg * 5.0;
+    const settled_schools_count = filteredSchools.filter((s) => s.settlement_status === "settled").length;
+    const total_participating_schools = filteredSchools.length;
+
+    return {
+      total_recycled_value_lkr,
+      total_points_liability,
+      total_disbursed_lkr,
+      outstanding_balance_lkr,
+      total_collected_kg,
+      landfill_savings_lkr,
+      settled_schools_count,
+      total_participating_schools,
+    };
   },
 
   /**
@@ -276,7 +319,17 @@ export const financialService = {
       filtered = filtered.filter((s) => s.settlement_status === params.status);
     }
     if (params.school_id) {
-      filtered = filtered.filter((s) => s.school_id === params.school_id);
+      filtered = filtered.filter((s) => s.school_id === Number(params.school_id));
+    }
+    if (params.start_date) {
+      filtered = filtered.filter(
+        (s) => !s.last_collection_date || s.last_collection_date >= params.start_date!
+      );
+    }
+    if (params.end_date) {
+      filtered = filtered.filter(
+        (s) => !s.last_collection_date || s.last_collection_date <= params.end_date!
+      );
     }
 
     const page = params.page || 1;
@@ -332,9 +385,48 @@ export const financialService = {
         return response.data.data;
       }
     } catch {
-      // Fallback for development & Stage 1 preview
+      // Fallback for development & Stage 1-3 preview
     }
-    return BASELINE_CATEGORY_VALUATION;
+
+    let filteredSchools = [...BASELINE_SCHOOL_STATEMENTS];
+    if (params.school_id) {
+      filteredSchools = filteredSchools.filter((s) => s.school_id === Number(params.school_id));
+    }
+    if (params.status && params.status !== "all") {
+      filteredSchools = filteredSchools.filter((s) => s.settlement_status === params.status);
+    }
+    if (params.start_date) {
+      filteredSchools = filteredSchools.filter(
+        (s) => !s.last_collection_date || s.last_collection_date >= params.start_date!
+      );
+    }
+    if (params.end_date) {
+      filteredSchools = filteredSchools.filter(
+        (s) => !s.last_collection_date || s.last_collection_date <= params.end_date!
+      );
+    }
+
+    const baselineTotalWeight = BASELINE_CATEGORY_VALUATION.total_weight_kg;
+    const total_collected_kg = filteredSchools.reduce((acc, s) => acc + s.total_collections_kg, 0);
+    const ratio = baselineTotalWeight > 0 ? total_collected_kg / baselineTotalWeight : 1;
+
+    const scaledCategories = BASELINE_CATEGORY_VALUATION.categories.map((c) => {
+      const weight = Math.round(c.total_weight_kg * ratio * 10) / 10;
+      const value = Math.round(c.total_value_lkr * ratio * 100) / 100;
+      return {
+        ...c,
+        total_weight_kg: weight,
+        total_value_lkr: value,
+      };
+    });
+
+    const totalVal = scaledCategories.reduce((acc, c) => acc + c.total_value_lkr, 0);
+
+    return {
+      total_weight_kg: total_collected_kg,
+      total_value_lkr: totalVal,
+      categories: scaledCategories,
+    };
   },
 
   /**

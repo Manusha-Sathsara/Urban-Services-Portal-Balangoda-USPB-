@@ -384,6 +384,7 @@ export interface FinancialFilterParams {
   status?: string;
   start_date?: string;
   end_date?: string;
+  report_type?: string;
   search?: string;
   page?: number;
   limit?: number;
