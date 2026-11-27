@@ -46,7 +46,7 @@ func main() {
 
 	db, err := database.ConnectPostgres()
 	if err != nil {
-		log.Printf("[WARN] PostgreSQL connection warning: %v. Scaffolding mode active.", err)
+		log.Printf("[WARN] PostgreSQL connection warning: %v.", err)
 	} else {
 		defer db.Close()
 
@@ -97,24 +97,46 @@ func main() {
 
 		authHandler.RegisterRoutes(api, jwtMW, csrfMW, adminMW, loginLimiter)
 
-		// Protect business module routes behind JWT, CSRF, and role checks
-		gfGroup := api.Group("", jwtMW, csrfMW, middleware.RequireRoles(auth.RoleFeeOfficer, auth.RoleAdmin))
+		// Garbage Fee Management
+		api.Use("/garbage-fees", jwtMW, csrfMW, middleware.RequireRoles(auth.RoleFeeOfficer, auth.RoleAdmin))
 		gfRepo := garbagefee.NewRepository(db)
 		gfService := garbagefee.NewService(gfRepo)
 		gfHandler := garbagefee.NewHandler(gfService)
-		gfHandler.RegisterRoutes(gfGroup)
+		gfHandler.RegisterRoutes(api)
 
-		envGroup := api.Group("", jwtMW, csrfMW, middleware.RequireRoles(auth.RoleEnvOfficer, auth.RoleAdmin))
+		// Environmental Certificates
+		api.Use("/environmental-certs", jwtMW, csrfMW, middleware.RequireRoles(auth.RoleEnvOfficer, auth.RoleAdmin))
 		envRepo := envcert.NewRepository(db)
 		envService := envcert.NewService(envRepo)
 		envHandler := envcert.NewHandler(envService)
-		envHandler.RegisterRoutes(envGroup)
+		envHandler.RegisterRoutes(api)
 
-		srGroup := api.Group("", jwtMW, csrfMW, middleware.RequireRoles(auth.RoleTeacher, auth.RoleGarbageSupervisor, auth.RoleAdmin))
-		srRepo := schoolrewards.NewRepository(db)
-		srService := schoolrewards.NewService(srRepo)
-		srHandler := schoolrewards.NewHandler(srService)
-		srHandler.RegisterRoutes(srGroup)
+		// School Waste Rewards (Manusha + Praneepa)
+		srRoleMW := middleware.RequireRoles(auth.RoleTeacher, auth.RoleGarbageSupervisor, auth.RoleAdmin)
+		for _, prefix := range []string{"/schools", "/categories", "/badges", "/school-rewards"} {
+			api.Use(prefix, jwtMW, csrfMW, srRoleMW)
+		}
+
+		schoolRepo := schoolrewards.NewSchoolRepository(db)
+		schoolService := schoolrewards.NewSchoolService(schoolRepo)
+		schoolHandler := schoolrewards.NewSchoolHandler(schoolService)
+		schoolHandler.RegisterRoutes(api)
+
+		categoryRepo := schoolrewards.NewCategoryRepository(db)
+		categoryService := schoolrewards.NewCategoryService(categoryRepo)
+		categoryHandler := schoolrewards.NewCategoryHandler(categoryService)
+		categoryHandler.RegisterRoutes(api)
+
+		badgeRepo := schoolrewards.NewBadgeRepository(db)
+		pointsProvider := schoolrewards.NewSQLPointsLedgerProvider(db)
+		badgeService := schoolrewards.NewBadgeService(badgeRepo, pointsProvider)
+		badgeHandler := schoolrewards.NewBadgeHandler(badgeService)
+		badgeHandler.RegisterRoutes(api)
+
+		ledgerRepo := schoolrewards.NewLedgerRepository(db)
+		ledgerService := schoolrewards.NewLedgerService(ledgerRepo)
+		ledgerHandler := schoolrewards.NewLedgerHandler(ledgerService)
+		ledgerHandler.RegisterRoutes(api)
 	}
 
 	log.Printf("Starting USPB Backend server on port :%s", cfg.Port)

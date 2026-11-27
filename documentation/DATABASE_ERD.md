@@ -56,15 +56,17 @@ erDiagram
     }
 ```
 
-## 2. School Waste Rewards Schema (Planned Next)
+## 2. School Waste Rewards Schema (Implemented)
 
 ```mermaid
 erDiagram
-    schools ||--o{ users : "assigned teachers"
     schools ||--o{ students : "enrolls"
     students ||--o{ waste_collections : "earns points"
-    garbage_categories ||--o{ waste_collections : "rates at collection time"
-    students ||--o{ reward_payouts : "redeems 1000 pts"
-    badge_definitions ||--o{ student_badge_awards : "awarded milestones"
+    waste_collections ||--|{ waste_collection_items : "contains"
+    garbage_categories ||--o{ category_rate_history : "tracks rates"
+    students ||--o{ reward_payouts : "redeems 1000 pts (Rs. 1000)"
+    students ||--o{ point_transactions : "authoritative ledger"
+    badge_definitions ||--o{ badge_threshold_history : "tracks thresholds"
     students ||--o{ student_badge_awards : "receives"
+    badge_definitions ||--o{ student_badge_awards : "awarded"
 ```
