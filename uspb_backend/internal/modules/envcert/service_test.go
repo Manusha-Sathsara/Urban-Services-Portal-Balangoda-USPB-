@@ -12,6 +12,11 @@ type mockRepository struct {
 	createErr        error
 	markExpiredCount int64
 	markExpiredErr   error
+	renewedCert      *EnvironmentalCert
+	renewErr         error
+	expiringCerts    []EnvironmentalCert
+	expiringErr      error
+	lastExpiringDays int
 }
 
 func (m *mockRepository) GetAll() ([]EnvironmentalCert, error) {
@@ -36,11 +41,15 @@ func (m *mockRepository) MarkExpiredCerts() (int64, error) {
 }
 
 func (m *mockRepository) RenewCert(id string) (*EnvironmentalCert, error) {
-	return nil, nil
+	if m.renewErr != nil {
+		return nil, m.renewErr
+	}
+	return m.renewedCert, nil
 }
 
 func (m *mockRepository) GetExpiringSoon(days int) ([]EnvironmentalCert, error) {
-	return nil, nil
+	m.lastExpiringDays = days
+	return m.expiringCerts, m.expiringErr
 }
 
 func TestCreateCert_ValidationErrors(t *testing.T) {
@@ -203,6 +212,116 @@ func TestProcessMonthlyExpiryCheck(t *testing.T) {
 		}
 		if count != 0 {
 			t.Errorf("expected count 0 on error, got %d", count)
+		}
+	})
+}
+
+func TestRenewCert(t *testing.T) {
+	t.Run("renews an EXPIRED certificate successfully", func(t *testing.T) {
+		repo := &mockRepository{
+			certs: []EnvironmentalCert{
+				{ID: 1, BusinessName: "Kalthota Spice Mill", Status: "EXPIRED"},
+			},
+			renewedCert: &EnvironmentalCert{
+				ID:           1,
+				BusinessName: "Kalthota Spice Mill",
+				Status:       "APPROVED",
+			},
+		}
+		svc := NewService(repo)
+
+		renewed, err := svc.RenewCert("1")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if renewed == nil || renewed.Status != "APPROVED" {
+			t.Errorf("expected renewed status APPROVED, got %+v", renewed)
+		}
+	})
+
+	t.Run("rejects renewal for PENDING certificate", func(t *testing.T) {
+		repo := &mockRepository{
+			certs: []EnvironmentalCert{
+				{ID: 2, BusinessName: "Saman Tea Factory", Status: "PENDING"},
+			},
+		}
+		svc := NewService(repo)
+
+		_, err := svc.RenewCert("2")
+		if err == nil {
+			t.Fatalf("expected eligibility error, got nil")
+		}
+		expected := "only approved or expired certificates are eligible for renewal"
+		if err.Error() != expected {
+			t.Errorf("expected %q, got %q", expected, err.Error())
+		}
+	})
+
+	t.Run("returns error when certificate does not exist", func(t *testing.T) {
+		repo := &mockRepository{}
+		svc := NewService(repo)
+
+		_, err := svc.RenewCert("999")
+		if err == nil {
+			t.Fatalf("expected not found error, got nil")
+		}
+	})
+
+	t.Run("propagates repository renewal error", func(t *testing.T) {
+		repo := &mockRepository{
+			certs:    []EnvironmentalCert{{ID: 1, BusinessName: "Balangoda Bakers", Status: "APPROVED"}},
+			renewErr: errors.New("database update failed"),
+		}
+		svc := NewService(repo)
+
+		_, err := svc.RenewCert("1")
+		if err == nil || err.Error() != "database update failed" {
+			t.Errorf("expected 'database update failed', got %v", err)
+		}
+	})
+}
+
+func TestListExpiringSoon(t *testing.T) {
+	t.Run("defaults to 90 days when non-positive window is provided", func(t *testing.T) {
+		repo := &mockRepository{
+			expiringCerts: []EnvironmentalCert{
+				{ID: 3, BusinessName: "Rathna Ayurveda Pharmacy", Status: "APPROVED"},
+			},
+		}
+		svc := NewService(repo)
+
+		certs, err := svc.ListExpiringSoon(0)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if repo.lastExpiringDays != 90 {
+			t.Errorf("expected default 90-day window, got %d", repo.lastExpiringDays)
+		}
+		if len(certs) != 1 {
+			t.Errorf("expected 1 expiring certificate, got %d", len(certs))
+		}
+	})
+
+	t.Run("passes explicit day window to repository", func(t *testing.T) {
+		repo := &mockRepository{}
+		svc := NewService(repo)
+
+		_, err := svc.ListExpiringSoon(30)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if repo.lastExpiringDays != 30 {
+			t.Errorf("expected 30-day window, got %d", repo.lastExpiringDays)
+		}
+	})
+
+	t.Run("propagates repository error", func(t *testing.T) {
+		repo := &mockRepository{expiringErr: errors.New("query timeout")}
+		svc := NewService(repo)
+
+		_, err := svc.ListExpiringSoon(90)
+		if err == nil || err.Error() != "query timeout" {
+			t.Errorf("expected 'query timeout', got %v", err)
 		}
 	})
 }
