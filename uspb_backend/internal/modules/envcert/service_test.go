@@ -35,6 +35,14 @@ func (m *mockRepository) MarkExpiredCerts() (int64, error) {
 	return m.markExpiredCount, m.markExpiredErr
 }
 
+func (m *mockRepository) RenewCert(id string) (*EnvironmentalCert, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) GetExpiringSoon(days int) ([]EnvironmentalCert, error) {
+	return nil, nil
+}
+
 func TestCreateCert_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name string

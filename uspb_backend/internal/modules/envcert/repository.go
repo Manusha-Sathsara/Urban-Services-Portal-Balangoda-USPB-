@@ -30,6 +30,8 @@ type Repository interface {
 	GetByID(id string) (*EnvironmentalCert, error)
 	Create(cert *EnvironmentalCert) error
 	MarkExpiredCerts() (int64, error)
+	RenewCert(id string) (*EnvironmentalCert, error)
+	GetExpiringSoon(days int) ([]EnvironmentalCert, error)
 }
 
 type repository struct {
@@ -104,4 +106,39 @@ func (r *repository) MarkExpiredCerts() (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+func (r *repository) RenewCert(id string) (*EnvironmentalCert, error) {
+	var cert EnvironmentalCert
+	query := `
+		UPDATE env_cert_businesses
+		SET status = 'APPROVED',
+		    issued_date = NOW(),
+		    expiry_date = NOW() + INTERVAL '1 year',
+		    updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, business_name, registration_no, owner_name, owner_nic,
+		          contact_phone, contact_email, address, ward_no, business_category,
+		          status, issued_date, expiry_date, created_by, created_at, updated_at`
+	err := r.db.Get(&cert, query, id)
+	if err != nil {
+		return nil, err
+	}
+	return &cert, nil
+}
+
+func (r *repository) GetExpiringSoon(days int) ([]EnvironmentalCert, error) {
+	certs := []EnvironmentalCert{}
+	query := `
+		SELECT id, business_name, registration_no, owner_name, owner_nic,
+		       contact_phone, contact_email, address, ward_no, business_category,
+		       status, issued_date, expiry_date, created_by, created_at, updated_at
+		FROM env_cert_businesses
+		WHERE status = 'APPROVED'
+		  AND expiry_date IS NOT NULL
+		  AND expiry_date >= NOW()
+		  AND expiry_date <= NOW() + MAKE_INTERVAL(days => $1)
+		ORDER BY expiry_date ASC`
+	err := r.db.Select(&certs, query, days)
+	return certs, err
 }
