@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group.Get("/:id", h.GetByID)
 	group.Post("/", h.Create)
 	group.Post("/check-expiry", h.RunExpiryCheck)
+	group.Post("/:id/renew", h.Renew)
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -67,4 +68,33 @@ func (h *Handler) RunExpiryCheck(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, fiber.StatusOK, "Environmental certificate expiry check completed", fiber.Map{
 		"expired_count": expiredCount,
 	})
+}
+
+func (h *Handler) ListExpiringSoon(c *fiber.Ctx) error {
+	days := c.QueryInt("days", 90)
+	certs, err := h.service.ListExpiringSoon(days)
+	if err != nil {
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+	return utils.SuccessResponse(c, fiber.StatusOK, "Expiring certificates retrieved", certs)
+}
+
+func (h *Handler) Renew(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if _, err := strconv.Atoi(id); err != nil {
+		return utils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid certificate ID")
+	}
+
+	cert, err := h.service.RenewCert(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "eligible for renewal") {
+			return utils.ErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		}
+		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "not found") {
+			return utils.ErrorResponse(c, fiber.StatusNotFound, "Certificate not found")
+		}
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.SuccessResponse(c, fiber.StatusOK, "Certificate renewed successfully", cert)
 }
