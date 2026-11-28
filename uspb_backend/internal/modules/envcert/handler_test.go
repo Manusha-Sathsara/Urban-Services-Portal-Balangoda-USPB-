@@ -52,6 +52,14 @@ func (m *mockService) ProcessMonthlyExpiryCheck() (int64, error) {
 	return m.expiryCount, m.expiryCheckErr
 }
 
+func (m *mockService) RenewCert(id string) (*EnvironmentalCert, error) {
+	return nil, nil
+}
+
+func (m *mockService) ListExpiringSoon(days int) ([]EnvironmentalCert, error) {
+	return nil, nil
+}
+
 func setupTestApp(svc Service) *fiber.App {
 	app := fiber.New()
 	api := app.Group("/api/v1")
